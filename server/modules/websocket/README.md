@@ -32,7 +32,7 @@ Benefits:
 | File | Responsibility |
 |---|---|
 | `services/websocket-server.service.ts` | Creates `WebSocketServer`, binds `verifyClient`, routes connection by pathname |
-| `services/websocket-auth.service.ts` | Authenticates upgrade requests and attaches `request.user` |
+| `services/websocket-auth.service.ts` | Resolves the implicit local user for upgrade requests and attaches `request.user` |
 | `services/chat-websocket.service.ts` | Handles the `/ws` chat protocol (`chat.send` / `chat.abort` / `chat.stop-task` / `chat.subscribe` / `chat.permission-response`) |
 | `services/chat-run-registry.service.ts` | Tracks live provider runs per app session id: seq numbering, event replay buffer, provider-id mapping, completion state |
 | `services/chat-session-writer.service.ts` | Gateway writer handed to provider runtimes: remaps provider session ids to app ids, swallows `session_created`, assigns `seq` |
@@ -76,18 +76,12 @@ sequenceDiagram
 
   Client->>WSS: Upgrade Request
   WSS->>Auth: verifyClient(info)
-  alt Platform mode
-    Auth->>Auth: authenticateWebSocket(null)
-    Auth->>Auth: attach request.user
-  else OSS mode
-    Auth->>Auth: read token from ?token or Authorization
-    Auth->>Auth: authenticateWebSocket(token)
-    Auth->>Auth: attach request.user
-  end
+  Auth->>Auth: authenticateWebSocket(null)
+  Auth->>Auth: attach request.user (implicit local user)
 
-  alt Auth failed
+  alt User resolution failed
     Auth-->>WSS: false (reject handshake)
-  else Auth ok
+  else User resolved
     Auth-->>WSS: true
     WSS->>Router: on("connection", ws, request)
     alt pathname == /ws

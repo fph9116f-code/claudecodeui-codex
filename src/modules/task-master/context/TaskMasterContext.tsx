@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { api } from '@/shared/api';
-import { useAuth } from '@/modules/auth';
 import { useWebSocket } from '@/shared/context/WebSocketContext';
 import type { Project, ServerEvent, TaskMasterProject, TaskMasterProjectInfo, TaskMasterTask } from '@/shared/types';
 
@@ -100,7 +99,6 @@ export function useTaskMaster() {
 /** Mounted by App.tsx; supplies the TaskMaster project and task state that the sidebar module and this module's own components read through useTaskMaster. */
 export function TaskMasterProvider({ children }: { children: React.ReactNode }) {
   const { subscribe } = useWebSocket();
-  const { user, token, isLoading: isAuthLoading } = useAuth();
 
   const [currentProject, setCurrentProjectState] = useState<TaskMasterProject | null>(null);
   const [projectTaskMaster, setProjectTaskMaster] = useState<TaskMasterProjectInfo | null>(null);
@@ -155,7 +153,7 @@ export function TaskMasterProvider({ children }: { children: React.ReactNode }) 
 
   const refreshCurrentProjectTaskMaster = useCallback(
     async (projectId: string) => {
-      if (!projectId || !user || !token) {
+      if (!projectId) {
         return;
       }
 
@@ -189,7 +187,7 @@ export function TaskMasterProvider({ children }: { children: React.ReactNode }) 
         handleError('load selected project TaskMaster info', caughtError);
       }
     },
-    [applyTaskMasterInfo, handleError, token, user],
+    [applyTaskMasterInfo, handleError],
   );
 
   const setCurrentProject = useCallback(
@@ -221,7 +219,7 @@ export function TaskMasterProvider({ children }: { children: React.ReactNode }) 
    * — even though the only thing downstream reads is `currentProject`. The
    * per-project endpoint answers exactly that question, which also means it is
    * now the same call setCurrentProject and the websocket handler already make,
-   * so the only caller left is the sign-in effect below.
+   * so the only caller left is the startup effect below.
    */
   const refreshSelectedProjectTaskMaster = useCallback(async () => {
     const currentProjectId = currentProjectIdRef.current;
@@ -236,7 +234,7 @@ export function TaskMasterProvider({ children }: { children: React.ReactNode }) 
     // TaskMaster tasks endpoint now lives under /api/taskmaster/tasks/:projectId.
     const projectId = currentProject?.projectId;
 
-    if (!projectId || !user || !token) {
+    if (!projectId) {
       setTasks([]);
       setNextTask(null);
       return;
@@ -264,14 +262,9 @@ export function TaskMasterProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [clearError, currentProject?.projectId, handleError, token, user]);
+  }, [clearError, currentProject?.projectId, handleError]);
 
   const refreshMCPStatus = useCallback(async () => {
-    if (!user || !token) {
-      setMcpServerStatus(null);
-      return;
-    }
-
     try {
       setIsLoadingMCP(true);
       clearError();
@@ -289,20 +282,18 @@ export function TaskMasterProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setIsLoadingMCP(false);
     }
-  }, [clearError, handleError, token, user]);
+  }, [clearError, handleError]);
 
   useEffect(() => {
-    if (!isAuthLoading && user && token) {
-      void refreshSelectedProjectTaskMaster();
-      void refreshMCPStatus();
-    }
-  }, [isAuthLoading, refreshMCPStatus, refreshSelectedProjectTaskMaster, token, user]);
+    void refreshSelectedProjectTaskMaster();
+    void refreshMCPStatus();
+  }, [refreshMCPStatus, refreshSelectedProjectTaskMaster]);
 
   useEffect(() => {
-    if (currentProject?.projectId && user && token) {
+    if (currentProject?.projectId) {
       void refreshTasks();
     }
-  }, [currentProject?.projectId, refreshTasks, token, user]);
+  }, [currentProject?.projectId, refreshTasks]);
 
   useEffect(() => {
     const handleEvent = (event: ServerEvent) => {

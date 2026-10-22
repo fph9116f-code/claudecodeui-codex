@@ -3,7 +3,6 @@ import type { VerifyClientCallbackSync } from 'ws';
 import type { AuthenticatedWebSocketRequest } from '@/shared/types.js';
 
 type WebSocketAuthDependencies = {
-  isPlatform: boolean;
   authenticateWebSocket: (token: string | null) => {
     id?: string | number;
     userId?: string | number;
@@ -13,7 +12,9 @@ type WebSocketAuthDependencies = {
 };
 
 /**
- * Authenticates websocket upgrade requests before the `connection` handler runs.
+ * Resolves the implicit local user for websocket upgrade requests before the
+ * `connection` handler runs. Login was removed, so no session token is
+ * validated or required.
  */
 export function verifyWebSocketClient(
   info: Parameters<VerifyClientCallbackSync<AuthenticatedWebSocketRequest>>[0],
@@ -21,39 +22,16 @@ export function verifyWebSocketClient(
 ): boolean {
   const request = info.req as AuthenticatedWebSocketRequest;
   const upgradeUrl = new URL(request.url ?? '/', 'http://localhost');
-  const loggedUrl = new URL(upgradeUrl);
-  if (loggedUrl.searchParams.has('token')) {
-    loggedUrl.searchParams.set('token', 'REDACTED');
-  }
 
-  console.log('WebSocket connection attempt to:', `${loggedUrl.pathname}${loggedUrl.search}`);
+  console.log('WebSocket connection attempt to:', upgradeUrl.pathname);
 
-  // Platform mode: use the first DB user and skip token checks.
-  if (dependencies.isPlatform) {
-    const user = dependencies.authenticateWebSocket(null);
-    if (!user) {
-      console.log('[WARN] Platform mode: No user found in database');
-      return false;
-    }
-
-    request.user = user;
-    console.log('[OK] Platform mode WebSocket authenticated for user:', user.username);
-    return true;
-  }
-
-  // OSS mode: read JWT from query string first, then Authorization header.
-  const token =
-    upgradeUrl.searchParams.get('token') ??
-    request.headers.authorization?.split(' ')[1] ??
-    null;
-
-  const user = dependencies.authenticateWebSocket(token);
+  const user = dependencies.authenticateWebSocket(null);
   if (!user) {
-    console.log('[WARN] WebSocket authentication failed');
+    console.log('[WARN] WebSocket local user resolution failed');
     return false;
   }
 
   request.user = user;
-  console.log('[OK] WebSocket authenticated for user:', user.username);
+  console.log('[OK] WebSocket authenticated for local user:', user.username);
   return true;
 }

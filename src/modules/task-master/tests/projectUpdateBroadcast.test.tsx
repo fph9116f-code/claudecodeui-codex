@@ -34,15 +34,6 @@ vi.mock('@/shared/api', () => ({
   },
 }));
 
-// Hoisted to a constant: returning a fresh object per call would give `user` a
-// new identity every render, which makes every useCallback depending on it
-// unstable and turns the effect below into an infinite loop.
-const AUTH = { user: { id: 1 }, token: 'token', isLoading: false };
-
-vi.mock('@/modules/auth', () => ({
-  useAuth: () => AUTH,
-}));
-
 const WEBSOCKET = {
   subscribe: (handler: (event: ServerEvent) => void) => {
     emit = handler;

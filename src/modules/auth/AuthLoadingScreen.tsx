@@ -4,7 +4,7 @@ import { CLOUDCLI_WORDMARK_FONT_FAMILY } from '@/shared/constants';
 
 const loadingDotAnimationDelays = ['0s', '0.15s', '0.3s'];
 
-/** Rendered by the auth module's ProtectedRoute while the initial auth status check is in flight. */
+/** Rendered by the auth module's ProtectedRoute while the initial local session bootstrap is in flight. */
 export default function AuthLoadingScreen() {
   const { t } = useTranslation('auth');
   return (

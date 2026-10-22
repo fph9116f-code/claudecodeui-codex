@@ -14,14 +14,6 @@ import type { AppTab, Project } from '@/shared/types';
  * WebSocketProvider driving the real header.
  */
 
-// Hoisted to a constant so `user` keeps one identity across renders; a fresh
-// object would rebuild `connect` and reconnect on every render.
-const AUTH = { user: { id: 1 }, token: 'token', isLoading: false };
-
-vi.mock('@/modules/auth', () => ({
-  useAuth: () => AUTH,
-}));
-
 vi.mock('@/modules/plugins', () => ({
   usePlugins: () => ({ plugins: [] }),
   PluginIcon: () => null,

@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DragEvent } from 'react';
 
-import { IS_PLATFORM } from '@/shared/utils';
 import type { FileTreeUploadProgressState, Project } from '@/shared/types';
 import { api } from '@/shared/api';
-import { expireAuthSession, getStoredAuthToken, storeAuthToken } from '@/shared/authToken';
 import { MAX_FILE_UPLOAD_SIZE_BYTES, MAX_FILE_UPLOAD_SIZE_LABEL } from '@/shared/constants';
 
 type UseFileTreeUploadOptions = {
@@ -105,11 +103,6 @@ const uploadFormDataWithProgress = (
 
     xhr.open('POST', api.uploadFilesUrl(projectId));
 
-    const token = getStoredAuthToken();
-    if (!IS_PLATFORM && token) {
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    }
-
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) {
         return;
@@ -121,14 +114,6 @@ const uploadFormDataWithProgress = (
     };
 
     xhr.onload = () => {
-      const refreshedToken = xhr.getResponseHeader('X-Refreshed-Token');
-      if (refreshedToken) {
-        storeAuthToken(refreshedToken);
-      }
-      if (xhr.getResponseHeader('X-Auth-Error')) {
-        expireAuthSession();
-      }
-
       const payload = parseUploadResponse(xhr);
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(payload);

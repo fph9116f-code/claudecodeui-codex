@@ -99,6 +99,34 @@ export const userDb = {
       .get() as UserPublicRow | undefined;
   },
 
+  /**
+   * Returns the first active user, creating the implicit local user when the
+   * database has none. Login is disabled, so this user owns every locally
+   * stored preference, draft and API key.
+   */
+  ensureLocalUser(): UserPublicRow {
+    const existing = userDb.getFirstUser();
+    if (existing) {
+      return existing;
+    }
+
+    const db = getConnection();
+    // The schema still declares password_hash as NOT NULL even though login
+    // was removed, so the implicit account stores an empty placeholder.
+    db.prepare(
+      "INSERT OR IGNORE INTO users (username, password_hash) VALUES ('local', '')"
+    ).run();
+    // A previous install may have left this account deactivated; reactivate it
+    // instead of failing to resolve a user on every request.
+    db.prepare("UPDATE users SET is_active = 1 WHERE username = 'local'").run();
+
+    const localUser = userDb.getFirstUser();
+    if (!localUser) {
+      throw new Error('Failed to create the implicit local user');
+    }
+    return localUser;
+  },
+
   /** Stores the user's preferred git name and email. */
   updateGitConfig(
     userId: number,

@@ -53,7 +53,7 @@ async function runCliBootstrapFixture(isPlatform: boolean): Promise<BootstrapRes
 
     const fixtureIndexSource = `
 import { createCliService } from ${JSON.stringify(sourceModuleUrl('server', 'modules', 'cli', 'cli.service.ts'))};
-import { authenticateToken } from ${JSON.stringify(sourceModuleUrl('server', 'modules', 'auth', 'index.ts'))};
+import { attachLocalUser } from ${JSON.stringify(sourceModuleUrl('server', 'modules', 'auth', 'index.ts'))};
 import { getBrowserUseRuntime } from ${JSON.stringify(sourceModuleUrl('server', 'modules', 'browser-use', 'index.ts'))};
 import { closeConnection, initializeDatabase, userDb } from ${JSON.stringify(sourceModuleUrl('server', 'modules', 'database', 'index.ts'))};
 
@@ -106,7 +106,7 @@ export function createCliApplication() {
         },
       };
       let authNextCalled = false;
-      await authenticateToken(request, response, () => {
+      await attachLocalUser(request, response, () => {
         authNextCalled = true;
       });
       const runtime = getBrowserUseRuntime();
@@ -157,7 +157,7 @@ export function createCliApplication() {
   }
 }
 
-test('CLI bootstrap selects Platform authentication and cloud runtime from .env', async () => {
+test('CLI bootstrap selects the cloud runtime and resolves the local user in platform mode', async () => {
   const result = await runCliBootstrapFixture(true);
 
   assert.deepEqual(result, {
@@ -171,16 +171,18 @@ test('CLI bootstrap selects Platform authentication and cloud runtime from .env'
   });
 });
 
-test('CLI bootstrap selects OSS authentication and local runtime from .env', async () => {
+test('CLI bootstrap selects the local runtime and resolves the local user in OSS mode', async () => {
   const result = await runCliBootstrapFixture(false);
 
+  // Login is disabled, so OSS mode no longer rejects requests without a JWT:
+  // both modes attach the same implicit local user.
   assert.deepEqual(result, {
     command: 'status',
     environmentFileReads: 0,
     mode: 'false',
-    authNextCalled: false,
-    authStatus: 401,
-    authenticatedUsername: null,
+    authNextCalled: true,
+    authStatus: 200,
+    authenticatedUsername: 'bootstrap-user',
     runtime: 'local',
   });
 });

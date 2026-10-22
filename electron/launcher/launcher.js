@@ -4,8 +4,8 @@ window.__MOCK_STATE__ = {
   activeTarget: { kind: 'launcher', name: 'Launcher', url: null },
   cloudLoading: false,
   desktopSettings: { keepLocalServerRunning: false, exposeLocalServerOnNetwork: false, themeMode: 'system' },
-  localWebUrl: 'http://localhost:3001',
-  shareableWebUrl: 'http://localhost:3001',
+  localWebUrl: 'http://localhost:3002',
+  shareableWebUrl: 'http://localhost:3002',
   localServerRunning: false,
   localStartupLogs: [],
   environments: [

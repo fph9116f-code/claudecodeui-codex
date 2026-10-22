@@ -7,7 +7,7 @@ import path from 'node:path';
 
 import { ServerInstaller } from './serverInstaller.js';
 
-const DEFAULT_PORT = 3001;
+const DEFAULT_PORT = 3002;
 const HOST = '127.0.0.1';
 const DISPLAY_HOST = 'localhost';
 const HEALTH_TIMEOUT_MS = 1000;

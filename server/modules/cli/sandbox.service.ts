@@ -45,7 +45,7 @@ function parseSandboxArguments(argumentsList: string[], homeDirectory: string): 
     workspace: null,
     agent: 'claude',
     name: null,
-    port: 3001,
+    port: 3002,
     template: null,
     environmentVariables: [],
   };
@@ -126,7 +126,7 @@ Options:
   -n, --name <name>         Sandbox name (default: derived from workspace folder)
   -t, --template <image>    Custom template image
   -e, --env <KEY=VALUE>     Set environment variable (repeatable)
-      --port <port>         Host port for the web UI (default: 3001)
+      --port <port>         Host port for the web UI (default: 3002)
 
 Examples:
   $ cloudcli sandbox ~/my-project

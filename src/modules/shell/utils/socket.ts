@@ -1,6 +1,3 @@
-import { IS_PLATFORM } from '@/shared/utils';
-import { getStoredAuthToken } from '@/shared/authToken';
-
 type ShellInitMessage = {
   type: 'init';
   projectPath: string;
@@ -42,20 +39,10 @@ type ShellIncomingMessage =
   | { type: 'claude_theme'; colorScheme?: string }
   | { type: string; [key: string]: unknown };
 
-export function getShellWebSocketUrl(): string | null {
+export function getShellWebSocketUrl(): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-
-  if (IS_PLATFORM) {
-    return `${protocol}//${window.location.host}/shell`;
-  }
-
-  const token = getStoredAuthToken();
-  if (!token) {
-    console.error('No authentication token found for Shell WebSocket connection');
-    return null;
-  }
-
-  return `${protocol}//${window.location.host}/shell?token=${encodeURIComponent(token)}`;
+  // Login was removed, so the shell socket carries no session token.
+  return `${protocol}//${window.location.host}/shell`;
 }
 
 export function parseShellMessage(payload: string): ShellIncomingMessage | null {

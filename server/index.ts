@@ -21,9 +21,8 @@ import { getConnectableHost } from '../shared/networkHosts.js';
 
 import { createGitModule } from './modules/git/index.js';
 import {
-    authenticateToken,
-    authenticateWebSocket,
-    authRoutes,
+    attachLocalUser,
+    resolveWebSocketUser,
     validateApiKey,
 } from './modules/auth/index.js';
 import { taskmasterRoutes } from './modules/taskmaster/index.js';
@@ -105,8 +104,7 @@ chatRunRegistry.setRetentionGuard((sessionId) => providerRuntimeService.hasBackg
 
 createWebSocketServer(server, {
     verifyClient: {
-        isPlatform: IS_PLATFORM,
-        authenticateWebSocket,
+        authenticateWebSocket: resolveWebSocketUser,
     },
     chat: {
         runtime: providerRuntimeService,
@@ -124,7 +122,7 @@ createWebSocketServer(server, {
     getPluginPort,
 });
 
-app.use(cors({ exposedHeaders: ['X-Refreshed-Token', 'X-Auth-Error'] }));
+app.use(cors());
 app.use(express.json({
     limit: '50mb',
     type: (req) => {
@@ -138,7 +136,7 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Public health check endpoint (no authentication required)
+// Public health check endpoint
 app.get('/health', (req, res) => {
     res.json({
         status: 'ok',
@@ -151,57 +149,54 @@ app.get('/health', (req, res) => {
 // Optional API key validation (if configured)
 app.use('/api', validateApiKey);
 
-// Authentication routes (public)
-app.use('/api/auth', authRoutes);
+// File Tree API Routes
+app.use('/api/file-tree', attachLocalUser, fileTreeRoutes);
 
-// File Tree API Routes (protected)
-app.use('/api/file-tree', authenticateToken, fileTreeRoutes);
+// Projects API Routes
+app.use('/api/projects', attachLocalUser, projectModuleRoutes);
 
-// Projects API Routes (protected)
-app.use('/api/projects', authenticateToken, projectModuleRoutes);
+// Chat attachment upload/serving (global ~/.cloudcli/assets store)
+app.use('/api/assets', attachLocalUser, assetsRoutes);
 
-// Chat attachment upload/serving (global ~/.cloudcli/assets store, protected)
-app.use('/api/assets', authenticateToken, assetsRoutes);
+// Git API Routes
+app.use('/api/git', attachLocalUser, gitRoutes);
 
-// Git API Routes (protected)
-app.use('/api/git', authenticateToken, gitRoutes);
+// Git worktree management
+app.use('/api/worktrees', attachLocalUser, worktreesRoutes);
 
-// Git worktree management (protected)
-app.use('/api/worktrees', authenticateToken, worktreesRoutes);
+// TaskMaster API Routes
+app.use('/api/taskmaster', attachLocalUser, taskmasterRoutes);
 
-// TaskMaster API Routes (protected)
-app.use('/api/taskmaster', authenticateToken, taskmasterRoutes);
+// Commands API Routes
+app.use('/api/commands', attachLocalUser, commandsRoutes);
 
-// Commands API Routes (protected)
-app.use('/api/commands', authenticateToken, commandsRoutes);
+// Settings API Routes
+app.use('/api/settings', attachLocalUser, settingsRoutes);
 
-// Settings API Routes (protected)
-app.use('/api/settings', authenticateToken, settingsRoutes);
+app.use('/api/system', attachLocalUser, systemRoutes);
 
-app.use('/api/system', authenticateToken, systemRoutes);
+app.use('/api/notifications', attachLocalUser, notificationRoutes);
 
-app.use('/api/notifications', authenticateToken, notificationRoutes);
+// User API Routes
+app.use('/api/user', attachLocalUser, userRoutes);
 
-// User API Routes (protected)
-app.use('/api/user', authenticateToken, userRoutes);
-
-// Plugins API Routes (protected)
-app.use('/api/plugins', authenticateToken, pluginsRoutes);
+// Plugins API Routes
+app.use('/api/plugins', attachLocalUser, pluginsRoutes);
 
 // Browser MCP bridge API (local token protected)
 app.use('/api/browser-use-mcp', browserUseMcpRoutes);
 
-// Browser API Routes (protected)
-app.use('/api/browser-use', authenticateToken, browserUseRoutes);
+// Browser API Routes
+app.use('/api/browser-use', attachLocalUser, browserUseRoutes);
 
-// Unified provider MCP routes (protected)
-app.use('/api/providers', authenticateToken, providerRoutes);
-app.use('/api/scheduled-messages', authenticateToken, scheduledMessagesRoutes);
+// Unified provider MCP routes
+app.use('/api/providers', attachLocalUser, providerRoutes);
+app.use('/api/scheduled-messages', attachLocalUser, scheduledMessagesRoutes);
 
 // Agent API Routes (uses API key authentication)
 app.use('/api/agent', agentRoutes);
 
-app.use('/api/voice', authenticateToken, voiceRoutes);
+app.use('/api/voice', attachLocalUser, voiceRoutes);
 
 // Serve public files (like api-docs.html)
 app.use(express.static(path.join(APP_ROOT, 'public')));
@@ -222,7 +217,7 @@ app.use(express.static(path.join(APP_ROOT, 'dist'), {
     }
 }));
 
-// API Routes (protected)
+// API Routes
 // /api/config endpoint removed - no longer needed
 // Frontend now uses window.location for WebSocket URLs
 
@@ -278,7 +273,7 @@ app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-const SERVER_PORT = Number.parseInt(process.env.SERVER_PORT || '3001', 10);
+const SERVER_PORT = Number.parseInt(process.env.SERVER_PORT || '3002', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const DISPLAY_HOST = getConnectableHost(HOST);
 const VITE_PORT = process.env.VITE_PORT || 5173;

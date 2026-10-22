@@ -91,7 +91,7 @@ npm install -g @cloudcli-ai/cloudcli
 cloudcli
 ```
 
-Open `http://localhost:3001` — all your existing sessions are discovered automatically.
+Open `http://localhost:3002` — all your existing sessions are discovered automatically.
 
 Visit the **[documentation →](https://cloudcli.ai/docs)** for full configuration options, PM2, remote server setup and more.
 

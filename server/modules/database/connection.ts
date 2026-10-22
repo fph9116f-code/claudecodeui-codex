@@ -103,7 +103,7 @@ let instance: Database.Database | null = null;
  *   2. Ensures the parent directory exists
  *   3. Migrates from the legacy install-directory path if needed
  *   4. Opens the SQLite connection
- *   5. Eagerly creates the app_config table (auth reads JWT secret at import time)
+ *   5. Eagerly creates the app_config table
  *   6. Logs the database location
  */
 export function getConnection(): Database.Database {
@@ -116,8 +116,8 @@ export function getConnection(): Database.Database {
 
   instance = new Database(dbPath);
 
-  // app_config must exist immediately — the auth middleware reads
-  // the JWT secret at module-load time, before initializeDatabase() runs.
+  // app_config is created eagerly so configuration reads that happen before
+  // initializeDatabase() runs do not fail.
   instance.exec(APP_CONFIG_TABLE_SCHEMA_SQL);
 
   return instance;

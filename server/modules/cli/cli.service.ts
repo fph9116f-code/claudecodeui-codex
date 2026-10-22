@@ -102,7 +102,7 @@ function showStatus(dependencies: CliServiceDependencies): void {
   }
 
   output.log(`\n${terminalTextStyles.info('[INFO]')} Configuration:`);
-  output.log(`       SERVER_PORT: ${terminalTextStyles.bright(environment.SERVER_PORT || environment.PORT || '3001')} ${terminalTextStyles.dim(environment.SERVER_PORT || environment.PORT ? '' : '(default)')}`);
+  output.log(`       SERVER_PORT: ${terminalTextStyles.bright(environment.SERVER_PORT || environment.PORT || '3002')} ${terminalTextStyles.dim(environment.SERVER_PORT || environment.PORT ? '' : '(default)')}`);
   output.log(`       DATABASE_PATH: ${terminalTextStyles.dim(environment.DATABASE_PATH || '(using default location)')}`);
   output.log(`       CLAUDE_CLI_PATH: ${terminalTextStyles.dim(environment.CLAUDE_CLI_PATH || 'claude (default)')}`);
   output.log(`       CONTEXT_WINDOW: ${terminalTextStyles.dim(environment.CONTEXT_WINDOW || '160000 (default)')}`);
@@ -121,7 +121,7 @@ function showStatus(dependencies: CliServiceDependencies): void {
   output.log(`      ${terminalTextStyles.dim('>')} Use ${terminalTextStyles.bright('cloudcli --port 8080')} to run on a custom port`);
   output.log(`      ${terminalTextStyles.dim('>')} Use ${terminalTextStyles.bright('cloudcli --database-path /path/to/db')} for custom database`);
   output.log(`      ${terminalTextStyles.dim('>')} Run ${terminalTextStyles.bright('cloudcli help')} for all options`);
-  output.log(`      ${terminalTextStyles.dim('>')} Access the UI at http://localhost:${environment.SERVER_PORT || environment.PORT || '3001'}\n`);
+  output.log(`      ${terminalTextStyles.dim('>')} Access the UI at http://localhost:${environment.SERVER_PORT || environment.PORT || '3002'}\n`);
 }
 
 function showHelp(dependencies: CliServiceDependencies): void {
@@ -144,7 +144,7 @@ Commands:
   version          Show version information
 
 Options:
-  -p, --port <port>           Set server port (default: 3001)
+  -p, --port <port>           Set server port (default: 3002)
   --database-path <path>      Set custom database location
   -h, --help                  Show this help information
   -v, --version               Show version information
@@ -156,8 +156,8 @@ Examples:
   $ cloudcli status                 # Show configuration
 
 Environment Variables:
-  SERVER_PORT         Set server port (default: 3001)
-  PORT                Set server port (default: 3001) (LEGACY)
+  SERVER_PORT         Set server port (default: 3002)
+  PORT                Set server port (default: 3002) (LEGACY)
   DATABASE_PATH       Set custom database location
   CLAUDE_CLI_PATH     Set custom Claude CLI path
   CONTEXT_WINDOW      Fallback context window size (default: 160000)

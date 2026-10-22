@@ -1,18 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useAuth } from '@/modules/auth';
-import { IS_PLATFORM } from '@/shared/utils';
-import { expireAuthSession, isAuthTokenExpired } from '@/shared/authToken';
 import type { ServerEvent } from '@/shared/types';
 
 
 type ServerEventListener = (event: ServerEvent) => void;
 
 /**
- * Where the chat socket stands. `connecting` covers a handshake the provider
- * started on purpose (after sign-in, or with a refreshed token) and the time
- * signed out; `disconnected` a socket that closed on its own (it dropped, or an
- * attempt failed) until a reconnect opens again.
+ * Where the chat socket stands. `connecting` covers a handshake in flight;
+ * `disconnected` a socket that closed on its own (it dropped, or an attempt
+ * failed) until a reconnect opens again.
  */
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -32,9 +28,7 @@ type WebSocketContextType = {
   /**
    * Lets the UI tell a lost connection (`disconnected`, reconnecting every few
    * seconds) apart from the first handshake (`connecting`), so it can show the
-   * former without flashing on every page load. A socket the provider replaces
-   * on purpose, such as on a token refresh, reports `connecting` until the new
-   * one opens, never `disconnected`.
+   * former without flashing on every page load.
    */
   connectionStatus: ConnectionStatus;
 };
@@ -49,15 +43,10 @@ export const useWebSocket = () => {
   return context;
 };
 
-const buildWebSocketUrl = (token: string | null) => {
+/** Login was removed, so the socket never carries a session token. */
+const buildWebSocketUrl = () => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  if (IS_PLATFORM) return `${protocol}//${window.location.host}/ws`; // Platform mode: Use same domain as the page (goes through proxy)
-  if (!token) return null;
-  if (isAuthTokenExpired(token)) {
-    expireAuthSession();
-    return null;
-  }
-  return `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(token)}`; // OSS mode: Use same host:port that served the page
+  return `${protocol}//${window.location.host}/ws`;
 };
 
 const useWebSocketProviderState = (): WebSocketContextType => {
@@ -75,7 +64,6 @@ const useWebSocketProviderState = (): WebSocketContextType => {
   // not read as a lost connection, or every page load would flash the indicator.
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { isLoading: isAuthLoading, token, user } = useAuth();
 
   const dispatch = useCallback((event: ServerEvent) => {
     for (const listener of listenersRef.current) {
@@ -91,16 +79,13 @@ const useWebSocketProviderState = (): WebSocketContextType => {
   // without reading the `connect` binding while it is still initializing.
   const connect = useCallback(function connect() {
     if (unmountedRef.current) return; // Prevent connection if unmounted
-    if (!IS_PLATFORM && (isAuthLoading || !user)) return;
     try {
       // Construct WebSocket URL
-      const wsUrl = buildWebSocketUrl(token);
-
-      if (!wsUrl) return console.warn('No authentication token found for WebSocket connection');
+      const wsUrl = buildWebSocketUrl();
 
       const websocket = new WebSocket(wsUrl);
-      // Store connecting sockets too, so a token refresh can close them before
-      // their handshake completes with stale credentials.
+      // Store the connecting socket so cleanup can close a handshake that is
+      // still in flight.
       wsRef.current = websocket;
 
       websocket.onopen = () => {
@@ -127,7 +112,7 @@ const useWebSocketProviderState = (): WebSocketContextType => {
         }
         // Also reached when the very first attempt fails, which is a lost
         // connection too. The effect cleanup detaches this handler before
-        // closing a socket on purpose, so a token refresh never gets here.
+        // closing a socket on purpose, so an intentional close never lands here.
         setConnectionStatus('disconnected');
         wsRef.current = null;
 
@@ -145,20 +130,16 @@ const useWebSocketProviderState = (): WebSocketContextType => {
     } catch (error) {
       console.error('Error creating WebSocket connection:', error);
     }
-  }, [dispatch, isAuthLoading, token, user]); // reconnect with current authentication state
+  }, [dispatch]);
 
   // Declared after `connect` so the effect body does not reference it before
-  // initialization. `connect` is memoized on [dispatch, isAuthLoading, token,
-  // user] and `dispatch` is stable, so depending on it reconnects on exactly
-  // the same transitions as the previous [isAuthLoading, token, user] list.
+  // initialization. `connect` and `dispatch` are stable, so this effect opens
+  // the socket once per mount and lets the reconnect timer own later attempts.
   useEffect(() => {
     // The cleanup below sets unmountedRef = true. Without this reset, every
-    // re-run of the effect (e.g. on token refresh) would short-circuit connect()
-    // at its unmounted guard and leave the socket permanently disconnected.
+    // re-run of the effect would short-circuit connect() at its unmounted guard
+    // and leave the socket permanently disconnected.
     unmountedRef.current = false;
-    if (!IS_PLATFORM && (isAuthLoading || !user)) {
-      return undefined;
-    }
     connect();
 
     return () => {
@@ -168,8 +149,7 @@ const useWebSocketProviderState = (): WebSocketContextType => {
       }
       const activeSocket = wsRef.current;
       if (activeSocket) {
-        // Prevent the intentionally closed, old-token socket from scheduling
-        // a reconnect after the refreshed-token effect has already started.
+        // Detach before closing so a cleanup never schedules a reconnect.
         activeSocket.onopen = null;
         activeSocket.onmessage = null;
         activeSocket.onclose = null;
@@ -177,13 +157,9 @@ const useWebSocketProviderState = (): WebSocketContextType => {
         activeSocket.close();
         wsRef.current = null;
       }
-      // What comes next is a socket with a refreshed token, or none after a
-      // sign-out or session expiry. Either way it starts from a fresh
-      // handshake: the socket closed here is no longer live, and a drop seen
-      // before must not show as "Reconnecting" after the next sign-in.
       setConnectionStatus('connecting');
     };
-  }, [connect, isAuthLoading, user]); // reconnect after authentication or token refresh
+  }, [connect]); // open one socket for the lifetime of the provider
 
   const sendMessage = useCallback((message: unknown) => {
     const socket = wsRef.current;

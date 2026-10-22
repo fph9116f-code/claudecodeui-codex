@@ -1,9 +1,3 @@
-import {
-  expireAuthSession,
-  getStoredAuthToken,
-  storeAuthToken,
-} from '@/shared/authToken';
-import { IS_PLATFORM } from '@/shared/utils';
 import { readVoiceConfig, voiceConfigHeaders } from '@/shared/voiceConfig';
 
 // Headers are a plain record rather than the full `HeadersInit` union so the
@@ -12,13 +6,14 @@ export type ApiRequestOptions = Omit<RequestInit, 'headers'> & {
   headers?: Record<string, string>;
 };
 
-// Utility function for authenticated API calls
+/**
+ * Shared request helper for API calls. Login was removed, so requests carry no
+ * credentials: the server resolves the implicit local user for every request.
+ */
 export const authenticatedFetch = (
   url: string,
   options: ApiRequestOptions = {},
 ): Promise<Response> => {
-  const token = getStoredAuthToken();
-
   const defaultHeaders: Record<string, string> = {};
 
   // Only set Content-Type for non-FormData requests
@@ -26,35 +21,15 @@ export const authenticatedFetch = (
     defaultHeaders['Content-Type'] = 'application/json';
   }
 
-  if (!IS_PLATFORM && token) {
-    defaultHeaders['Authorization'] = `Bearer ${token}`;
-  }
-
   return fetch(url, {
     ...options,
-    // Every response here can carry X-Refreshed-Token or X-Auth-Error, and a
-    // served-from-cache response replays the headers it was stored with. Those
-    // headers describe one moment in one session, so they must never be reused:
-    // a stale X-Refreshed-Token overwrote the current token with an expired one
-    // on every start, which then got discarded as expired.
+    // API responses are user-specific and mutated by other requests, so the
+    // browser cache must never replay them.
     cache: 'no-store',
     headers: {
       ...defaultHeaders,
       ...options.headers,
     },
-  }).then((response) => {
-    const refreshedToken = response.headers.get('X-Refreshed-Token');
-    if (refreshedToken) {
-      storeAuthToken(refreshedToken);
-    }
-    // Belt and braces for any path that still reaches a cached response: only a
-    // real rejection ends the session. Note that a revalidated response surfaces
-    // its stored status (typically 200), not the 304 from the wire, so the
-    // header alone says nothing about the current request.
-    if (response.status === 401 && response.headers.get('X-Auth-Error')) {
-      expireAuthSession();
-    }
-    return response;
   });
 };
 
@@ -197,24 +172,6 @@ const pluginAssetPath = (pluginName: string, assetFile: string) =>
 // import a named method instead of assembling URLs of their own.
 
 export const api = {
-  // Auth endpoints (no token required)
-  auth: {
-    status: () => fetch('/api/auth/status'),
-    login: (username: string, password: string) => fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    }),
-    register: (username: string, password: string) => fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    }),
-    refresh: () => post('/api/auth/refresh'),
-    user: () => get('/api/auth/user'),
-  },
-
-  // Protected endpoints
   // config endpoint removed - no longer needed (frontend uses window.location)
   // After the projectName → projectId migration the path/query identifier is
   // the DB-assigned `projectId`; parameter names reflect that for clarity.
@@ -252,15 +209,14 @@ export const api = {
     githubTokenId: number | null;
     newGithubToken: string | null;
   }) => post('/api/projects/clone', cloneRequest),
-  // EventSource cannot send an Authorization header, so the token rides along as
-  // a query parameter on the streaming endpoints below.
+  // EventSource cannot send request headers, and these streams are read-only,
+  // so the URLs carry only the identifiers each stream needs.
   cloneProjectProgressUrl: ({ cloneId }: { cloneId: string }) =>
-    `/api/projects/clone-progress${query({ cloneId, token: getStoredAuthToken() })}`,
+    `/api/projects/clone-progress${query({ cloneId })}`,
   searchConversationsUrl: (searchQuery: string, limit = 50) =>
     `/api/providers/search/sessions${query({
       q: searchQuery,
       limit,
-      token: getStoredAuthToken(),
     })}`,
 
   // Session endpoints. Provider/project metadata are resolved by the backend
