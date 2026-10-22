@@ -1,7 +1,7 @@
 {
-  "name": "CloudCLI UI",
-  "short_name": "CloudCLI UI",
-  "description": "CloudCLI UI web application",
+  "name": "Claude Code UI Codex",
+  "short_name": "Claude Code UI Codex",
+  "description": "Claude Code UI Codex web application",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
