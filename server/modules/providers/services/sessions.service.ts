@@ -15,7 +15,12 @@ import type {
   NormalizedMessage,
   WorkflowAgentActivity,
 } from '@/shared/types.js';
-import { AppError, sliceTailPage } from '@/shared/utils.js';
+import {
+  AppError,
+  SIDEBAR_SESSION_PROVIDERS,
+  isSidebarSessionProvider,
+  sliceTailPage,
+} from '@/shared/utils.js';
 
 /**
  * One session the running-sessions poll reports as busy.
@@ -161,10 +166,14 @@ export const sessionsService = {
    * indicators should not attach to chat streams or request replayed messages.
    */
   async listRunningSessions(): Promise<RunningSessionEntry[]> {
-    const entries: RunningSessionEntry[] = chatRunRegistry.listRunningRuns();
+    const entries: RunningSessionEntry[] = chatRunRegistry.listRunningRuns()
+      .filter((entry) => isSidebarSessionProvider(entry.provider));
     const runningById = new Map(entries.map((entry) => [entry.sessionId, entry]));
 
     for (const provider of providerRegistry.listProviders()) {
+      if (!isSidebarSessionProvider(provider.id)) {
+        continue;
+      }
       for (const { sessionId, tasks } of provider.runtime.listBackgroundWork?.() ?? []) {
         const running = runningById.get(sessionId);
         if (running) {
@@ -215,7 +224,7 @@ export const sessionsService = {
    * Returns the active conversation feed in true global activity order.
    */
   listRecentSessions(limit: number, offset: number): RecentSessionsPage {
-    const page = sessionsDb.getRecentSessionsPage(limit, offset);
+    const page = sessionsDb.getRecentSessionsPage(limit, offset, SIDEBAR_SESSION_PROVIDERS);
     const projectCache = new Map<string, ReturnType<typeof projectsDb.getProjectPath>>();
     const conversations = page.sessions.map((session) => {
       const projectPath = session.project_path?.trim() ? session.project_path : null;
@@ -637,7 +646,7 @@ export const sessionsService = {
    * group, filter, open, and restore them without a per-row follow-up query.
    */
   listArchivedSessions(): ArchivedSessionListItem[] {
-    const archivedSessions = sessionsDb.getArchivedSessions();
+    const archivedSessions = sessionsDb.getArchivedSessions(SIDEBAR_SESSION_PROVIDERS);
     const projectCache = new Map<string, ReturnType<typeof projectsDb.getProjectPath>>();
 
     return archivedSessions.map((session) => {

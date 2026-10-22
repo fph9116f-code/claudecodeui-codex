@@ -4,6 +4,7 @@ import { projectsDb, sessionsDb } from '@/modules/database/index.js';
 import { generateDisplayName } from '@/modules/projects/index.js';
 import { connectedClients, WS_OPEN_STATE } from '@/modules/websocket/services/websocket-state.service.js';
 import type { SessionUpsertedEvent } from '@/shared/types.js';
+import { isSidebarSessionProvider } from '@/shared/utils.js';
 
 /**
  * The single producer of the `session_upserted` delta.
@@ -27,7 +28,7 @@ async function buildSessionUpsertedEvent(
   // existed — both lookups land on the same row anyway.
   const row = sessionsDb.getSessionByProviderSessionId(sessionIdOrProviderSessionId)
     ?? sessionsDb.getSessionById(sessionIdOrProviderSessionId);
-  if (!row || row.isArchived) {
+  if (!row || row.isArchived || !isSidebarSessionProvider(row.provider)) {
     return null;
   }
 

@@ -6,6 +6,7 @@ import chokidar, { type FSWatcher } from 'chokidar';
 
 import { sessionSynchronizerService } from '@/modules/providers/services/session-synchronizer.service.js';
 import { broadcastSessionUpsertedBatch } from '@/modules/websocket/index.js';
+import { isSidebarSessionProvider } from '@/shared/utils.js';
 import type { LLMProvider } from '@/shared/types.js';
 
 type WatcherEventType = 'add' | 'change';
@@ -204,7 +205,9 @@ export async function initializeSessionsWatcher(): Promise<void> {
     failures: initialSync.failures,
   });
 
-  for (const { provider, rootPath } of PROVIDER_WATCH_PATHS) {
+  for (const { provider, rootPath } of PROVIDER_WATCH_PATHS.filter(({ provider: watchProvider }) => (
+    isSidebarSessionProvider(watchProvider)
+  ))) {
     try {
       await fsPromises.mkdir(rootPath, { recursive: true });
 

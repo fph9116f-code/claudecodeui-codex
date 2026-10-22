@@ -5,7 +5,11 @@ import readline from 'node:readline';
 import { spawn } from 'cross-spawn';
 import { rgPath } from '@vscode/ripgrep';
 
-import { isClaudeNonTurnMessageRow, stripAnsiSequences } from '@/shared/utils.js';
+import {
+  isClaudeNonTurnMessageRow,
+  isSidebarSessionProvider,
+  stripAnsiSequences,
+} from '@/shared/utils.js';
 import { projectsDb, sessionsDb } from '@/modules/database/index.js';
 
 type AnyRecord = Record<string, any>;
@@ -1168,7 +1172,9 @@ export async function searchConversations(
     return { results: [], titleResults: [], totalMatches: 0, query: safeQuery };
   }
 
-  const activeSessions = sessionsDb.getAllSessions();
+  // 搜索范围与侧边栏保持一致：非 Claude 会话不参与标题和正文搜索。
+  const activeSessions = sessionsDb.getAllSessions()
+    .filter((session) => isSidebarSessionProvider(session.provider));
   const titleResults = findSessionTitleResults(activeSessions, safeQuery, safeLimit);
   onTitleResults?.(titleResults);
 

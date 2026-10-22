@@ -3,6 +3,7 @@ import { access } from 'node:fs/promises';
 
 import { scanStateDb, sessionsDb } from '@/modules/database/index.js';
 import { providerRegistry } from '@/modules/providers/provider.registry.js';
+import { isSidebarSessionProvider } from '@/shared/utils.js';
 import type { LLMProvider } from '@/shared/types.js';
 
 type SessionSynchronizeResult = {
@@ -88,10 +89,14 @@ async function runSessionSynchronization(): Promise<SessionSynchronizeResult> {
   const failures: string[] = [];
 
   const results = await Promise.allSettled(
-    providerRegistry.listProviders().map(async (provider) => ({
-      provider: provider.id,
-      processed: await provider.sessionSynchronizer.synchronize(lastScanAt ?? undefined),
-    }))
+    providerRegistry.listProviders()
+      // 只为侧边栏展示的 provider 建立会话索引，避免已移除的 provider
+      // 会话在删除后又从磁盘被重新写入 sessions 表。
+      .filter((provider) => isSidebarSessionProvider(provider.id))
+      .map(async (provider) => ({
+        provider: provider.id,
+        processed: await provider.sessionSynchronizer.synchronize(lastScanAt ?? undefined),
+      }))
   );
 
   for (const result of results) {

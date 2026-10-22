@@ -23,6 +23,7 @@ import type {
   AnyRecord,
   ApiSuccessShape,
   AppErrorOptions,
+  LLMProvider,
   NormalizedMessage,
   ProviderCurrentActiveModel,
   ProviderModelsDefinition,
@@ -1354,3 +1355,28 @@ export function findApplicationRoot(startDirectory: string): string {
     ? path.dirname(parentDirectory)
     : parentDirectory;
 }
+
+// ---------------------------
+//----------------- SIDEBAR SESSION PROVIDER UTILITIES ------------
+/**
+ * Providers whose sessions are shown in the sidebar conversation lists.
+ *
+ * Only these providers' transcripts are synchronized and watched by the
+ * backend, returned by the sidebar queries, included in conversation search,
+ * and pushed through the realtime `session_upserted` broadcast. Add an id
+ * back here to restore that provider's history in the UI.
+ */
+export const SIDEBAR_SESSION_PROVIDERS: readonly LLMProvider[] = ['claude'];
+
+/**
+ * Reports whether a session provider should appear in the sidebar.
+ *
+ * Used by the session repository call sites, the running-sessions feed, the
+ * conversation search, and the realtime upsert broadcaster so they all share
+ * one visibility rule.
+ */
+export function isSidebarSessionProvider(provider: string): boolean {
+  return (SIDEBAR_SESSION_PROVIDERS as readonly string[]).includes(provider);
+}
+
+// ---------------------------
