@@ -5,19 +5,14 @@
 </div>
 
 <p align="center">
- <a href="https://cloudcli.ai">CloudCLI Cloud</a> · <a href="https://cloudcli.ai/docs">文件</a> · <a href="https://discord.gg/buxwujPNRE">Discord</a> · <a href="https://github.com/siteboon/claudecodeui/issues">Bug 回報</a> · <a href="../CONTRIBUTING.md">貢獻指南</a>
-</p>
-
-<p align="center">
- <a href="https://cloudcli.ai"><img src="https://img.shields.io/badge/☁️_CloudCLI_Cloud-Try_Now-0066FF?style=for-the-badge" alt="CloudCLI Cloud"></a>
- <a href="https://discord.gg/buxwujPNRE"><img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="加入 Discord 社群"></a>
- <br><br>
- <a href="https://trendshift.io/repositories/15586" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15586" alt="siteboon%2Fclaudecodeui | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+ <a href="https://cloudcli.ai/docs">文件</a> · <a href="https://github.com/fph9116f-code/claudecodeui-codex/issues">Bug 回報</a> · <a href="../CONTRIBUTING.md">貢獻指南</a>
 </p>
 
 <div align="right"><i><a href="../README.md">English</a> · <a href="./README.ru.md">Русский</a> · <a href="./README.de.md">Deutsch</a> · <a href="./README.ko.md">한국어</a> · <a href="./README.zh-CN.md">简体中文</a> · <b>繁體中文</b> · <a href="./README.ja.md">日本語</a> · <a href="./README.tr.md">Türkçe</a> · <a href="./README.id.md">Bahasa Indonesia</a></i></div>
 
 ---
+
+> **本倉庫定製說明：** 本倉庫是上游 CloudCLI UI 的個人定製版。已移除登入功能（本機單一使用者）、預設連接埠固定為 `3002`、移除 Discord 社群入口，所有倉庫連結均指向本倉庫。詳見 [README](../README.md)。
 
 ## 截圖
 
@@ -64,67 +59,39 @@
 
 ## 快速開始
 
-### CloudCLI Cloud（推薦）
+### 從原始碼執行（建議）
 
-無需本機設定即可快速啟動。提供可透過網路瀏覽器、行動應用程式、API 或慣用的 IDE 存取的完全容器化託管開發環境。
-
-**[立即開始 CloudCLI Cloud](https://cloudcli.ai)**
-
-### 自架（開源）
-
-#### npm
-
-啟動 CloudCLI UI，只需一行 `npx`（需要 Node.js v22+）：
+需要 **Node.js** v22+：
 
 ```bash
-npx @cloudcli-ai/cloudcli
+git clone https://github.com/fph9116f-code/claudecodeui-codex.git
+cd claudecodeui-codex
+npm install
+npm run dev
 ```
 
-或進行全域安裝，便於日常使用：
+- 前端開發伺服器：`http://localhost:5174`
+- 後端：`http://localhost:3002`
+
+生產模式：
 
 ```bash
-npm install -g @cloudcli-ai/cloudcli
-cloudcli
+npm run build
+npm start
 ```
 
-開啟 `http://localhost:3001`，系統會自動發現所有現有工作階段。
+開啟 `http://localhost:3002` — 本機既有的工作階段會自動被發現。
 
-更多設定選項、PM2、遠端伺服器設定等，請參閱 **[文件 →](https://cloudcli.ai/docs)**。
+> 本倉庫已移除登入功能，僅在本機以單一使用者模式執行，請勿直接暴露到公網。
 
-#### Docker Sandboxes（實驗性）
+### 桌面端
 
-在隔離的沙箱中執行代理，具有虛擬機管理程式等級的隔離。預設啟動 Claude Code。需要 [`sbx` CLI](https://docs.docker.com/ai/sandboxes/get-started/)。
+桌面端為選用元件，可直接從原始碼建置：
 
 ```bash
-npx @cloudcli-ai/cloudcli@latest sandbox ~/my-project
+npm run desktop:dev       # dev
+npm run desktop:dist:mac  # macOS
 ```
-
-支援 Claude Code 和 Codex。詳情請參閱[沙箱文件](../docker/)。
-
----
-
-## 哪個選項更適合你？
-
-CloudCLI UI 是 CloudCLI Cloud 的開源 UI 層。你可以在本機上自架它，也可以使用提供團隊功能與深入整合的 CloudCLI Cloud。
-
-| | CloudCLI UI（自架） | CloudCLI Cloud |
-|---|---|---|
-| **適合對象** | 需要為本機代理工作階段提供完整 UI 的開發者 | 需要部署在雲端，隨時從任何地方存取代理的團隊與開發者 |
-| **存取方式** | 透過 `[yourip]:port` 在瀏覽器中存取 | 瀏覽器、任意 IDE、REST API、n8n |
-| **設定** | `npx @cloudcli-ai/cloudcli` | 無需設定 |
-| **機器需保持開機嗎** | 是 | 否 |
-| **行動裝置存取** | 網路內任意瀏覽器 | 任意裝置（原生應用程式即將推出） |
-| **可用工作階段** | 自動發現 `~/.claude` 中的所有工作階段 | 雲端環境內的工作階段 |
-| **支援的 Agents** | Claude Code、Cursor CLI、Codex | Claude Code、Cursor CLI、Codex |
-| **檔案瀏覽與 Git** | 內建於 UI | 內建於 UI |
-| **MCP 設定** | UI 管理，與本機 `~/.claude` 設定同步 | UI 管理 |
-| **IDE 存取** | 本機 IDE | 任何連線到雲端環境的 IDE |
-| **REST API** | 是 | 是 |
-| **n8n 節點** | 否 | 是 |
-| **團隊共享** | 否 | 是 |
-| **平台費用** | 免費開源 | 起價 €7/月 |
-
-> 兩種方式都使用你自己的 AI 訂閱（Claude、Cursor 等）— CloudCLI 提供環境，而非 AI。
 
 ---
 
@@ -217,8 +184,7 @@ CloudCLI UI 與 CloudCLI Cloud 是對 Claude Code 的擴充，而非旁觀 — M
 ## 社群與支援
 
 - **[文件](https://cloudcli.ai/docs)** — 安裝、設定、功能與疑難排解指南
-- **[Discord](https://discord.gg/buxwujPNRE)** — 取得協助並與社群交流
-- **[GitHub Issues](https://github.com/siteboon/claudecodeui/issues)** — 回報 Bug 與建議功能
+- **[GitHub Issues](https://github.com/fph9116f-code/claudecodeui-codex/issues)** — 回報 Bug 與建議功能
 - **[貢獻指南](../CONTRIBUTING.md)** — 如何參與專案貢獻
 
 ## 授權條款
@@ -239,8 +205,6 @@ GNU Affero 通用公共授權條款 v3.0 或更高版本 (AGPL-3.0-or-later) —
 - **[CodeMirror](https://codemirror.net/)** — 進階程式碼編輯器
 - **[TaskMaster AI](https://github.com/eyaltoledano/claude-task-master)** *(選用)* — AI 驅動的專案管理與任務規劃
 
-### 贊助商
-- [Siteboon - AI powered website builder](https://siteboon.ai)
 ---
 
 <div align="center">

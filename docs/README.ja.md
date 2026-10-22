@@ -5,19 +5,14 @@
 </div>
 
 <p align="center">
- <a href="https://cloudcli.ai">CloudCLI Cloud</a> · <a href="https://cloudcli.ai/docs">ドキュメント</a> · <a href="https://discord.gg/buxwujPNRE">Discord</a> · <a href="https://github.com/siteboon/claudecodeui/issues">バグ報告</a> · <a href="../CONTRIBUTING.md">コントリビュート</a>
-</p>
-
-<p align="center">
- <a href="https://cloudcli.ai"><img src="https://img.shields.io/badge/☁️_CloudCLI_Cloud-Try_Now-0066FF?style=for-the-badge" alt="CloudCLI Cloud"></a>
- <a href="https://discord.gg/buxwujPNRE"><img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord コミュニティに参加"></a>
- <br><br>
- <a href="https://trendshift.io/repositories/15586" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15586" alt="siteboon%2Fclaudecodeui | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+ <a href="https://cloudcli.ai/docs">ドキュメント</a> · <a href="https://github.com/fph9116f-code/claudecodeui-codex/issues">バグ報告</a> · <a href="../CONTRIBUTING.md">コントリビュート</a>
 </p>
 
 <div align="right"><i><a href="../README.md">English</a> · <a href="./README.ru.md">Русский</a> · <a href="./README.de.md">Deutsch</a> · <a href="./README.ko.md">한국어</a> · <a href="./README.zh-CN.md">简体中文</a> · <a href="./README.zh-TW.md">繁體中文</a> · <b>日本語</b> · <a href="./README.tr.md">Türkçe</a> · <a href="./README.id.md">Bahasa Indonesia</a></i></div>
 
 ---
+
+> **この Fork について:** このリポジトリは上流 CloudCLI UI の個人向けカスタム版です。ログイン機能を廃止（ローカル単一ユーザー）、既定ポートを `3002` に固定、Discord コミュニティ導線を削除し、すべてのリポジトリリンクを本リポジトリに向けています。詳細は [README](../README.md) を参照してください。
 
 ## スクリーンショット
 
@@ -64,67 +59,39 @@
 
 ## クイックスタート
 
-### CloudCLI Cloud（推奨）
+### ソースから実行（推奨）
 
-最速で始める方法 — ローカルのセットアップは不要です。Web、モバイルアプリ、API、またはお気に入りの IDE からアクセスできる、フルマネージドでコンテナ化された開発環境を利用できます。
-
-**[CloudCLI Cloud を始める](https://cloudcli.ai)**
-
-### セルフホスト（オープンソース）
-
-#### npm
-
-**npx** で今すぐ CloudCLI UI を試せます（**Node.js** v22+ が必要）：
+**Node.js** v22+ が必要です:
 
 ```bash
-npx @cloudcli-ai/cloudcli
+git clone https://github.com/fph9116f-code/claudecodeui-codex.git
+cd claudecodeui-codex
+npm install
+npm run dev
 ```
 
-または、普段使いするなら **グローバル** にインストール：
+- フロントエンド開発サーバー: `http://localhost:5174`
+- バックエンド: `http://localhost:3002`
+
+本番モード:
 
 ```bash
-npm install -g @cloudcli-ai/cloudcli
-cloudcli
+npm run build
+npm start
 ```
 
-`http://localhost:3001` を開いてください — 既存のセッションは自動的に検出されます。
+`http://localhost:3002` を開きます — 既存のセッションは自動的に検出されます。
 
-より詳細な設定オプション、PM2、リモートサーバー設定などについては **[ドキュメントはこちら →](https://cloudcli.ai/docs)** を参照してください。
+> このフォークにはログインがなく、ローカルの単一ユーザーとして動作します。インターネットに直接公開しないでください。
 
-#### Docker Sandboxes（実験的）
+### デスクトップアプリ
 
-ハイパーバイザーレベルの分離でエージェントをサンドボックスで実行します。デフォルトでは Claude Code が起動します。[`sbx` CLI](https://docs.docker.com/ai/sandboxes/get-started/) が必要です。
+デスクトップアプリは任意で、ソースからビルドできます:
 
+```bash
+npm run desktop:dev       # dev
+npm run desktop:dist:mac  # macOS
 ```
-npx @cloudcli-ai/cloudcli@latest sandbox ~/my-project
-```
-
-Claude Code、Codex に対応。詳細は[サンドボックスのドキュメント](../docker/)をご覧ください。
-
----
-
-## どちらの選択肢が適していますか？
-
-CloudCLI UI は、CloudCLI Cloud を支えるオープンソースの UI レイヤーです。自分のマシンにセルフホストすることも、フルマネージドのクラウド環境、チーム機能、より深い統合を備えた CloudCLI Cloud を使うこともできます。
-
-| | CloudCLI UI（セルフホスト） | CloudCLI Cloud |
-|---|---|---|
-| **対象ユーザー** | 自分のマシン上でローカルの agent セッションに対してフル UI を使いたい開発者 | クラウド上で動く agents をどこからでも利用したいチーム／開発者 |
-| **アクセス方法** | ブラウザ（`[yourip]:port`） | ブラウザ、任意の IDE、REST API、n8n |
-| **セットアップ** | `npx @cloudcli-ai/cloudcli` | セットアップ不要 |
-| **マシンの稼働継続** | はい | いいえ |
-| **モバイルアクセス** | 同一ネットワーク内の任意のブラウザ | 任意のデバイス（ネイティブアプリも準備中） |
-| **利用可能なセッション** | `~/.claude` から全セッションを自動検出 | クラウド環境内の全セッション |
-| **対応エージェント** | Claude Code、Cursor CLI、Codex | Claude Code、Cursor CLI、Codex |
-| **ファイルエクスプローラとGit** | はい（UI に内蔵） | はい（UI に内蔵） |
-| **MCP設定** | UI で管理し、ローカルの `~/.claude` 設定と同期 | UI で管理 |
-| **IDEアクセス** | ローカル IDE | クラウド環境に接続された任意の IDE |
-| **REST API** | はい | はい |
-| **n8n ノード** | いいえ | はい |
-| **チーム共有** | いいえ | はい |
-| **料金プラン** | 無料（オープンソース） | 月 €7〜 |
-
-> どちらの選択肢でも、AI のサブスクリプション（Claude、Cursor など）はご自身のものを使用します — CloudCLI が提供するのは環境であり、AI そのものではありません。
 
 ---
 
@@ -216,8 +183,7 @@ CloudCLI UI と CloudCLI Cloud は、Claude Code の横に別物として存在�
 ## コミュニティとサポート
 
 - **[ドキュメント](https://cloudcli.ai/docs)** — インストール、設定、機能、トラブルシューティング
-- **[Discord](https://discord.gg/buxwujPNRE)** — ヘルプを得たり、ユーザー同士で交流したりできます
-- **[GitHub Issues](https://github.com/siteboon/claudecodeui/issues)** — バグ報告と機能要望
+- **[GitHub Issues](https://github.com/fph9116f-code/claudecodeui-codex/issues)** — バグ報告と機能要望
 - **[コントリビューションガイド](../CONTRIBUTING.md)** — プロジェクトへの貢献方法
 
 ## ライセンス
@@ -239,8 +205,6 @@ GNU General Public License v3.0 - 詳細は [LICENSE](../LICENSE) ファイル�
 - **[CodeMirror](https://codemirror.net/)** - 高度なコードエディタ
 - **[TaskMaster AI](https://github.com/eyaltoledano/claude-task-master)** *(オプション)* - AI を活用したプロジェクト管理とタスク計画
 
-## スポンサー
-- [Siteboon - AI を活用したウェブサイトビルダー](https://siteboon.ai)
 ---
 
 <div align="center">

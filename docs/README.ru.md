@@ -5,19 +5,14 @@
 </div>
 
 <p align="center">
- <a href="https://cloudcli.ai">CloudCLI Cloud</a> · <a href="https://cloudcli.ai/docs">Документация</a> · <a href="https://discord.gg/buxwujPNRE">Discord</a> · <a href="https://github.com/siteboon/claudecodeui/issues">Сообщить об ошибке</a> · <a href="../CONTRIBUTING.md">Участие в разработке</a>
-</p>
-
-<p align="center">
- <a href="https://cloudcli.ai"><img src="https://img.shields.io/badge/☁️_CloudCLI_Cloud-Try_Now-0066FF?style=for-the-badge" alt="CloudCLI Cloud"></a>
- <a href="https://discord.gg/buxwujPNRE"><img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join our Discord"></a>
- <br><br>
- <a href="https://trendshift.io/repositories/15586" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15586" alt="siteboon%2Fclaudecodeui | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+ <a href="https://cloudcli.ai/docs">Документация</a> · <a href="https://github.com/fph9116f-code/claudecodeui-codex/issues">Сообщить об ошибке</a> · <a href="../CONTRIBUTING.md">Участие в разработке</a>
 </p>
 
 <div align="right"><i><a href="../README.md">English</a> · <b>Русский</b> · <a href="./README.de.md">Deutsch</a> · <a href="./README.ko.md">한국어</a> · <a href="./README.zh-CN.md">简体中文</a> · <a href="./README.zh-TW.md">繁體中文</a> · <a href="./README.ja.md">日本語</a> · <a href="./README.tr.md">Türkçe</a> · <a href="./README.id.md">Bahasa Indonesia</a></i></div>
 
 ---
+
+> **Об этом форке:** Этот репозиторий — персональная модификация CloudCLI UI. Вход удалён (локальный однопользовательский режим), порт по умолчанию зафиксирован на `3002`, раздел Discord удалён, все ссылки ведут на этот репозиторий. Подробнее в [README](../README.md).
 
 ## Скриншоты
 
@@ -67,68 +62,39 @@
 
 ## Быстрый старт
 
-### CloudCLI Cloud (рекомендуется)
+### Запуск из исходников (рекомендуется)
 
-Самый быстрый способ начать — локальная настройка не требуется. Получите полностью управляемую контейнеризированную среду разработки с доступом из веба, мобильного приложения, API или вашей любимой IDE.
-
-**[Начать с CloudCLI Cloud](https://cloudcli.ai)**
-
-
-### Self-Hosted (Open source)
-
-#### npm
-
-Попробовать CloudCLI UI можно сразу через **npx** (требуется **Node.js** v22+):
+Требуется **Node.js** v22+:
 
 ```bash
-npx @cloudcli-ai/cloudcli
+git clone https://github.com/fph9116f-code/claudecodeui-codex.git
+cd claudecodeui-codex
+npm install
+npm run dev
 ```
 
-Или установить **глобально** для регулярного использования:
+- Dev-сервер фронтенда: `http://localhost:5174`
+- Бэкенд: `http://localhost:3002`
+
+Режим продакшена:
 
 ```bash
-npm install -g @cloudcli-ai/cloudcli
-cloudcli
+npm run build
+npm start
 ```
 
-Откройте `http://localhost:3001` — все ваши существующие сессии будут обнаружены автоматически.
+Откройте `http://localhost:3002` — существующие сессии обнаруживаются автоматически.
 
-Посетите **[документацию →](https://cloudcli.ai/docs)**, чтобы узнать про дополнительные варианты конфигурации, PM2, настройку удалённого сервера и многое другое.
+> В этом форке нет входа, он работает как один локальный пользователь. Не выставляйте его напрямую в интернет.
 
-#### Docker Sandboxes (Экспериментально)
+### Настольное приложение
 
-Запускайте агентов в изолированных песочницах с гипервизорной изоляцией. По умолчанию запускается Claude Code. Требуется [`sbx` CLI](https://docs.docker.com/ai/sandboxes/get-started/).
+Настольное приложение необязательно и собирается из исходников:
 
+```bash
+npm run desktop:dev       # dev
+npm run desktop:dist:mac  # macOS
 ```
-npx @cloudcli-ai/cloudcli@latest sandbox ~/my-project
-```
-
-Поддерживаются Claude Code и Codex. Подробнее в [документации sandbox](../docker/).
-
----
-
-## Какой вариант подходит вам?
-
-CloudCLI UI — это open source UI-слой, на котором построен CloudCLI Cloud. Вы можете развернуть его на своей машине или использовать CloudCLI Cloud, который добавляет полностью управляемую облачную среду, командные функции и более глубокие интеграции.
-
-| | CloudCLI UI (Self-hosted) | CloudCLI Cloud |
-|---|---|---|
-| **Лучше всего подходит для** | Разработчиков, которым нужен полноценный UI для локальных агентских сессий на своей машине | Команд и разработчиков, которым нужны агенты в облаке с доступом откуда угодно |
-| **Как вы получаете доступ** | Браузер через `[yourip]:port` | Браузер, любая IDE, REST API, n8n |
-| **Настройка** | `npx @cloudcli-ai/cloudcli` | Настройка не требуется |
-| **Машина должна оставаться включённой** | Да | Нет |
-| **Доступ с мобильных устройств** | Любой браузер в вашей сети | Любое устройство, нативное приложение в разработке |
-| **Доступные сессии** | Все сессии автоматически обнаруживаются из `~/.claude` | Все сессии внутри вашей облачной среды |
-| **Поддерживаемые агенты** | Claude Code, Cursor CLI, Codex | Claude Code, Cursor CLI, Codex |
-| **Проводник файлов и Git** | Да, встроены в UI | Да, встроены в UI |
-| **Конфигурация MCP** | Управляется через UI, синхронизируется с вашим локальным конфигом `~/.claude` | Управляется через UI |
-| **Доступ из IDE** | Ваша локальная IDE | Любая IDE, подключенная к вашей облачной среде |
-| **REST API** | Да | Да |
-| **n8n node** | Нет | Да |
-| **Совместная работа** | Нет | Да |
-| **Стоимость платформы** | Бесплатно, open source | От €7/месяц |
-
-> В обоих вариантах используются ваши собственные AI-подписки (Claude, Cursor и т.д.) — CloudCLI предоставляет среду, а не сам AI.
 
 ---
 
@@ -224,8 +190,7 @@ CloudCLI UI и CloudCLI Cloud расширяют Claude Code, а не работ
 ## Сообщество и поддержка
 
 - **[Документация](https://cloudcli.ai/docs)** — установка, настройка, возможности и устранение неполадок
-- **[Discord](https://discord.gg/buxwujPNRE)** — помощь и общение с другими пользователями
-- **[GitHub Issues](https://github.com/siteboon/claudecodeui/issues)** — сообщения об ошибках и запросы новых функций
+- **[GitHub Issues](https://github.com/fph9116f-code/claudecodeui-codex/issues)** — сообщения об ошибках и запросы новых функций
 - **[Руководство для контрибьюторов](../CONTRIBUTING.md)** — как участвовать в развитии проекта
 
 ## Лицензия
@@ -247,8 +212,6 @@ GNU General Public License v3.0 - подробности в файле [LICENSE]
 - **[TaskMaster AI](https://github.com/eyaltoledano/claude-task-master)** *(опционально)* - AI-управление проектами и планирование задач
 
 
-### Спонсоры
-- [Siteboon - AI powered website builder](https://siteboon.ai)
 ---
 
 <div align="center">

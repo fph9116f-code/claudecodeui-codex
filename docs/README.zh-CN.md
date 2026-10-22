@@ -5,19 +5,22 @@
 </div>
 
 <p align="center">
- <a href="https://cloudcli.ai">CloudCLI Cloud</a> · <a href="https://cloudcli.ai/docs">文档</a> · <a href="https://discord.gg/buxwujPNRE">Discord</a> · <a href="https://github.com/siteboon/claudecodeui/issues">Bug 报告</a> · <a href="../CONTRIBUTING.md">贡献指南</a>
-</p>
-
-<p align="center">
- <a href="https://cloudcli.ai"><img src="https://img.shields.io/badge/☁️_CloudCLI_Cloud-Try_Now-0066FF?style=for-the-badge" alt="CloudCLI Cloud"></a>
- <a href="https://discord.gg/buxwujPNRE"><img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="加入 Discord 社区"></a>
- <br><br>
- <a href="https://trendshift.io/repositories/15586" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15586" alt="siteboon%2Fclaudecodeui | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+ <a href="https://cloudcli.ai/docs">文档</a> · <a href="https://github.com/fph9116f-code/claudecodeui-codex/issues">Bug 报告</a> · <a href="../CONTRIBUTING.md">贡献指南</a>
 </p>
 
 <div align="right"><i><a href="../README.md">English</a> · <a href="./README.ru.md">Русский</a> · <a href="./README.de.md">Deutsch</a> · <a href="./README.ko.md">한국어</a> · <b>简体中文</b> · <a href="./README.zh-TW.md">繁體中文</a> · <a href="./README.ja.md">日本語</a> · <a href="./README.tr.md">Türkçe</a> · <a href="./README.id.md">Bahasa Indonesia</a></i></div>
 
 ---
+
+## 本仓库定制说明
+
+本仓库是基于上游 CloudCLI UI **v1.37.5** 的个人定制版，与上游的主要差异：
+
+- **移除登录功能** — 不再需要账号密码，所有请求以本机隐式 `local` 用户运行，仅适合本机或可信内网使用。
+- **默认端口固定为 3002** — 后端固定监听 `3002`；开发模式下前端 Vite 运行在 `5174`。
+- **移除社区入口** — 侧栏（展开态与折叠态）和设置页中的 Discord「加入社区」入口已删除。
+- **链接指向本仓库** — 报告问题、Star 徽章、版本检查、GitHub 链接、包元数据均指向本仓库。
+- **修复侧栏白屏** — 移除 Discord 入口后残留的未定义变量引用已修复。
 
 ## 截图
 
@@ -64,67 +67,39 @@
 
 ## 快速开始
 
-### CloudCLI Cloud（推荐）
+### 从源码运行（推荐）
 
-无需本地设置即可快速启动。提供可通过网络浏览器、移动应用、API 或喜欢的 IDE 访问的完全集装式托管开发环境。
-
-**[立即开始 CloudCLI Cloud](https://cloudcli.ai)**
-
-### 自托管（开源）
-
-#### npm
-
-启动 CloudCLI UI，只需一行 `npx`（需要 Node.js v22+）：
+需要 **Node.js** v22+：
 
 ```bash
-npx @cloudcli-ai/cloudcli
+git clone https://github.com/fph9116f-code/claudecodeui-codex.git
+cd claudecodeui-codex
+npm install
+npm run dev
 ```
 
-或进行全局安装，便于日常使用：
+- 前端开发地址：`http://localhost:5174`
+- 后端地址：`http://localhost:3002`
+
+生产模式：
 
 ```bash
-npm install -g @cloudcli-ai/cloudcli
-cloudcli
+npm run build
+npm start
 ```
 
-打开 `http://localhost:3001`，系统会自动发现所有现有会话。
+打开 `http://localhost:3002` — 本地已有的会话会被自动发现。
 
-更多配置选项、PM2、远程服务器设置等，请参阅 **[文档 →](https://cloudcli.ai/docs)**。
+> 本仓库已移除登录功能，仅在本机以单用户模式运行，请勿直接暴露到公网。
 
-#### Docker Sandboxes（实验性）
+### 桌面端
 
-在隔离的沙箱中运行代理，具有虚拟机管理程序级别的隔离。默认启动 Claude Code。需要 [`sbx` CLI](https://docs.docker.com/ai/sandboxes/get-started/)。
+桌面端为可选组件，可直接从源码构建：
 
+```bash
+npm run desktop:dev       # dev
+npm run desktop:dist:mac  # macOS
 ```
-npx @cloudcli-ai/cloudcli@latest sandbox ~/my-project
-```
-
-支持 Claude Code 和 Codex。详情请参阅 [沙箱文档](../docker/)。
-
----
-
-## 哪个选项更适合你？
-
-CloudCLI UI 是 CloudCLI Cloud 的开源 UI 层。你可以在本地机器上自托管它，也可以使用提供团队功能与深入集成的 CloudCLI Cloud。
-
-| | CloudCLI UI（自托管） | CloudCLI Cloud |
-|---|---|---|
-| **适合对象** | 需要为本地代理会话提供完整 UI 的开发者 | 需要部署在云端，随时从任何地方访问代理的团队与开发者 |
-| **访问方式** | 通过 `[yourip]:port` 在浏览器中访问 | 浏览器、任意 IDE、REST API、n8n |
-| **设置** | `npx @cloudcli-ai/cloudcli` | 无需设置 |
-| **机器需保持开机吗** | 是 | 否 |
-| **移动端访问** | 网络内任意浏览器 | 任意设备（原生应用即将推出） |
-| **可用会话** | 自动发现 `~/.claude` 中的所有会话 | 云端环境内的会话 |
-| **支持的 Agents** | Claude Code、Cursor CLI、Codex | Claude Code、Cursor CLI、Codex |
-| **文件浏览与 Git** | 内置于 UI | 内置于 UI |
-| **MCP 配置** | UI 管理，与本地 `~/.claude` 配置同步 | UI 管理 |
-| **IDE 访问** | 本地 IDE | 任何连接到云环境的 IDE |
-| **REST API** | 是 | 是 |
-| **n8n 节点** | 否 | 是 |
-| **团队共享** | 否 | 是 |
-| **平台费用** | 免费开源 | 起价 €7/月 |
-
-> 两种方式都使用你自己的 AI 订阅（Claude、Cursor 等）— CloudCLI 提供环境，而非 AI。
 
 ---
 
@@ -217,8 +192,7 @@ CloudCLI UI 与 CloudCLI Cloud 是对 Claude Code 的扩展，而非旁观 — M
 ## 社区与支持
 
 - **[文档](https://cloudcli.ai/docs)** — 安装、配置、功能与故障排除指南
-- **[Discord](https://discord.gg/buxwujPNRE)** — 获取帮助并与社区交流
-- **[GitHub Issues](https://github.com/siteboon/claudecodeui/issues)** — 报告 Bug 与建议功能
+- **[GitHub Issues](https://github.com/fph9116f-code/claudecodeui-codex/issues)** — 报告 Bug 与建议功能
 - **[贡献指南](../CONTRIBUTING.md)** — 如何参与项目贡献
 
 ## 许可证
@@ -239,8 +213,6 @@ GNU Affero 通用公共许可证 v3.0 或更高版本 (AGPL-3.0-or-later) - 详�
 - **[CodeMirror](https://codemirror.net/)** - 高级代码编辑器
 - **[TaskMaster AI](https://github.com/eyaltoledano/claude-task-master)** *(可选)* - AI 驱动的项目管理与任务规划
 
-### 赞助商
-- [Siteboon - AI powered website builder](https://siteboon.ai)
 ---
 
 <div align="center">

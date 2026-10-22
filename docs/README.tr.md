@@ -5,19 +5,14 @@
 </div>
 
 <p align="center">
- <a href="https://cloudcli.ai">CloudCLI Cloud</a> · <a href="https://cloudcli.ai/docs">Dokümantasyon</a> · <a href="https://discord.gg/buxwujPNRE">Discord</a> · <a href="https://github.com/siteboon/claudecodeui/issues">Sorun Bildir</a> · <a href="../CONTRIBUTING.md">Katkıda Bulun</a>
-</p>
-
-<p align="center">
- <a href="https://cloudcli.ai"><img src="https://img.shields.io/badge/☁️_CloudCLI_Cloud-Hemen_Dene-0066FF?style=for-the-badge" alt="CloudCLI Cloud"></a>
- <a href="https://discord.gg/buxwujPNRE"><img src="https://img.shields.io/badge/Discord-Toplulu%C4%9Fa%20Kat%C4%B1l-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord'a Katıl"></a>
- <br><br>
- <a href="https://trendshift.io/repositories/15586" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15586" alt="siteboon%2Fclaudecodeui | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+ <a href="https://cloudcli.ai/docs">Dokümantasyon</a> · <a href="https://github.com/fph9116f-code/claudecodeui-codex/issues">Sorun Bildir</a> · <a href="../CONTRIBUTING.md">Katkıda Bulun</a>
 </p>
 
 <div align="right"><i><a href="../README.md">English</a> · <a href="./README.ru.md">Русский</a> · <a href="./README.de.md">Deutsch</a> · <a href="./README.ko.md">한국어</a> · <a href="./README.zh-CN.md">简体中文</a> · <a href="./README.zh-TW.md">繁體中文</a> · <a href="./README.ja.md">日本語</a> · <b>Türkçe</b> · <a href="./README.id.md">Bahasa Indonesia</a></i></div>
 
 ---
+
+> **Bu fork hakkında:** Bu depo, CloudCLI UI'in kişisel bir uyarlamasıdır. Giriş kaldırıldı (yerel tek kullanıcı), varsayılan port `3002` olarak sabitlendi, Discord bölümü kaldırıldı ve tüm depo bağlantıları bu depoyu gösterir. Ayrıntılar için [README](../README.md).
 
 ## Ekran Görüntüleri
 
@@ -67,67 +62,39 @@
 
 ## Hızlı Başlangıç
 
-### CloudCLI Cloud (Önerilen)
+### Kaynaktan çalıştırma (önerilir)
 
-Başlamanın en hızlı yolu — yerel kurulum yok. Web, mobil uygulama, API veya favori IDE'nden erişilebilen, tam yönetilen, konteyner tabanlı bir geliştirme ortamına sahip ol.
+**Node.js** v22+ gerekir:
 
-**[CloudCLI Cloud ile başla](https://cloudcli.ai)**
-
-
-### Kendin Barındır (Açık Kaynak)
-
-#### npm
-
-CloudCLI UI'yi **npx** ile anında dene (**Node.js** v22+ gerekir):
-
-```
-npx @cloudcli-ai/cloudcli
+```bash
+git clone https://github.com/fph9116f-code/claudecodeui-codex.git
+cd claudecodeui-codex
+npm install
+npm run dev
 ```
 
-Veya düzenli kullanım için **genel olarak** kur:
+- Ön uç geliştirme sunucusu: `http://localhost:5174`
+- Arka uç: `http://localhost:3002`
 
-```
-npm install -g @cloudcli-ai/cloudcli
-cloudcli
-```
+Üretim modu:
 
-`http://localhost:3001` adresini aç — mevcut tüm oturumların otomatik olarak keşfedilir.
-
-Tam yapılandırma seçenekleri, PM2, uzak sunucu kurulumu ve daha fazlası için **[dokümantasyonu ziyaret et →](https://cloudcli.ai/docs)**.
-
-#### Docker Sandbox'lar (Deneysel)
-
-Ajanları hipervizör seviyesinde izolasyonlu sandbox'larda çalıştır. Varsayılan olarak Claude Code başlar. [`sbx` CLI](https://docs.docker.com/ai/sandboxes/get-started/) gerekir.
-
-```
-npx @cloudcli-ai/cloudcli@latest sandbox ~/my-project
+```bash
+npm run build
+npm start
 ```
 
-Claude Code ve Codex'i destekler. Kurulum ve gelişmiş seçenekler için [sandbox dokümantasyonuna](../docker/) bak.
+`http://localhost:3002` adresini açın — mevcut oturumlar otomatik olarak keşfedilir.
 
+> Bu fortta giriş yoktur ve tek yerel kullanıcı olarak çalışır. Doğrudan internete açmayın.
 
----
+### Masaüstü uygulaması
 
-## Hangi seçenek sana uygun?
+Masaüstü uygulaması isteğe bağlıdır ve kaynaktan derlenebilir:
 
-CloudCLI UI, CloudCLI Cloud'u güçlendiren açık kaynak arayüz katmanıdır. Kendi makinende barındırabilir, izolasyon için Docker sandbox'ta çalıştırabilir veya tam yönetilen ortam için CloudCLI Cloud kullanabilirsin.
-
-| | Kendin Barındır (npm) | Kendin Barındır (Docker Sandbox) *(Deneysel)* | CloudCLI Cloud |
-|---|---|---|---|
-| **En iyi şunun için** | Kendi makinende yerel ajan oturumları | Web/mobil IDE ile izole ajanlar | Ajanlarını bulutta isteyen ekipler |
-| **Nasıl erişilir** | `[yourip]:port` üzerinden tarayıcıda | `localhost:port` üzerinden tarayıcıda | Tarayıcı, herhangi bir IDE, REST API, n8n |
-| **Kurulum** | `npx @cloudcli-ai/cloudcli` | `npx @cloudcli-ai/cloudcli@latest sandbox ~/project` | Kurulum gerekmez |
-| **İzolasyon** | Kendi host'unda çalışır | Hipervizör seviyesi sandbox (microVM) | Tam bulut izolasyonu |
-| **Makinenin açık kalması gerek** | Evet | Evet | Hayır |
-| **Mobil erişim** | Ağındaki herhangi bir tarayıcı | Ağındaki herhangi bir tarayıcı | Herhangi bir cihaz, native uygulama yolda |
-| **Desteklenen ajanlar** | Claude Code, Cursor CLI, Codex | Claude Code, Codex | Claude Code, Cursor CLI, Codex |
-| **Dosya gezgini ve Git** | Evet | Evet | Evet |
-| **MCP yapılandırması** | `~/.claude` ile senkron | UI üzerinden yönetilir | UI üzerinden yönetilir |
-| **REST API** | Evet | Evet | Evet |
-| **Ekip paylaşımı** | Hayır | Hayır | Evet |
-| **Platform maliyeti** | Ücretsiz, açık kaynak | Ücretsiz, açık kaynak | Aylık 7 €'dan başlar |
-
-> Tüm seçenekler kendi AI aboneliklerini (Claude, Cursor, vb.) kullanır — CloudCLI AI'ı değil, ortamı sağlar.
+```bash
+npm run desktop:dev       # dev
+npm run desktop:dist:mac  # macOS
+```
 
 ---
 
@@ -223,8 +190,7 @@ Evet, kendin barındırdığında. CloudCLI UI, Claude Code'un yerel olarak kull
 ## Topluluk ve Destek
 
 - **[Dokümantasyon](https://cloudcli.ai/docs)** — kurulum, yapılandırma, özellikler ve sorun giderme
-- **[Discord](https://discord.gg/buxwujPNRE)** — yardım al ve diğer kullanıcılarla tanış
-- **[GitHub Issues](https://github.com/siteboon/claudecodeui/issues)** — hata raporları ve özellik istekleri
+- **[GitHub Issues](https://github.com/fph9116f-code/claudecodeui-codex/issues)** — hata raporları ve özellik istekleri
 - **[Katkı Rehberi](../CONTRIBUTING.md)** — projeye nasıl katkıda bulunulur
 
 ## Lisans
@@ -248,8 +214,6 @@ CloudCLI UI — (https://cloudcli.ai).
 - **[TaskMaster AI](https://github.com/eyaltoledano/claude-task-master)** *(İsteğe Bağlı)* — AI destekli proje yönetimi ve görev planlama
 
 
-### Sponsorlar
-- [Siteboon — AI destekli web sitesi oluşturucu](https://siteboon.ai)
 ---
 
 <div align="center">

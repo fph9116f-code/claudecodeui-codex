@@ -5,19 +5,14 @@
 </div>
 
 <p align="center">
- <a href="https://cloudcli.ai">CloudCLI Cloud</a> · <a href="https://cloudcli.ai/docs">문서</a> · <a href="https://discord.gg/buxwujPNRE">Discord</a> · <a href="https://github.com/siteboon/claudecodeui/issues">버그 신고</a> · <a href="../CONTRIBUTING.md">기여 안내</a>
-</p>
-
-<p align="center">
- <a href="https://cloudcli.ai"><img src="https://img.shields.io/badge/☁️_CloudCLI_Cloud-Try_Now-0066FF?style=for-the-badge" alt="CloudCLI Cloud"></a>
- <a href="https://discord.gg/buxwujPNRE"><img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord 커뮤니티"></a>
- <br><br>
- <a href="https://trendshift.io/repositories/15586" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15586" alt="siteboon%2Fclaudecodeui | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+ <a href="https://cloudcli.ai/docs">문서</a> · <a href="https://github.com/fph9116f-code/claudecodeui-codex/issues">버그 신고</a> · <a href="../CONTRIBUTING.md">기여 안내</a>
 </p>
 
 <div align="right"><i><a href="../README.md">English</a> · <a href="./README.ru.md">Русский</a> · <a href="./README.de.md">Deutsch</a> · <b>한국어</b> · <a href="./README.zh-CN.md">简体中文</a> · <a href="./README.zh-TW.md">繁體中文</a> · <a href="./README.ja.md">日本語</a> · <a href="./README.tr.md">Türkçe</a> · <a href="./README.id.md">Bahasa Indonesia</a></i></div>
 
 ---
+
+> **이 저장소 안내:** 업스트림 CloudCLI UI의 개인 커스텀 버전입니다. 로그인 기능을 제거(로컬 단일 사용자), 기본 포트를 `3002`로 고정, Discord 커뮤니티 항목을 삭제했으며 모든 저장소 링크가 이 저장소를 가리킵니다. 자세한 내용은 [README](../README.md)를 참고하세요.
 
 ## 스크린샷
 
@@ -64,67 +59,39 @@
 
 ## 빠른 시작
 
-### CloudCLI Cloud (추천)
+### 소스에서 실행(권장)
 
-가장 빠르게 시작하는 방법 — 로컬 설정 없이도 가능합니다. 웹, 모바일 앱, API 또는 선호하는 IDE에서 이용할 수 있는 완전 관리형 컨테이너화된 개발 환경을 제공합니다.
-
-**[CloudCLI Cloud 시작하기](https://cloudcli.ai)**
-
-### 셀프 호스트 (오픈 소스)
-
-#### npm
-
-**npx**로 즉시 CloudCLI UI를 실행하세요 (Node.js v22+ 필요):
+**Node.js** v22+가 필요합니다:
 
 ```bash
-npx @cloudcli-ai/cloudcli
+git clone https://github.com/fph9116f-code/claudecodeui-codex.git
+cd claudecodeui-codex
+npm install
+npm run dev
 ```
 
-**정기적으로 사용한다면 전역 설치:**
+- 프론트엔드 개발 서버: `http://localhost:5174`
+- 백엔드: `http://localhost:3002`
+
+프로덕션 모드:
 
 ```bash
-npm install -g @cloudcli-ai/cloudcli
-cloudcli
+npm run build
+npm start
 ```
 
-`http://localhost:3001`을 열면 기존 세션이 자동으로 발견됩니다.
+`http://localhost:3002`를 엽니다 — 기존 세션이 자동으로 검색됩니다.
 
-자세한 구성 옵션, PM2, 원격 서버 설정 등은 **[문서 →](https://cloudcli.ai/docs)**를 참고하세요.
+> 이 포크에는 로그인이 없으며 로컬 단일 사용자로 실행됩니다. 인터넷에 직접 노출하지 마세요.
 
-#### Docker Sandboxes (실험적)
+### 데스크톱 앱
 
-하이퍼바이저 수준 격리로 에이전트를 샌드박스에서 실행합니다. 기본 에이전트는 Claude Code입니다. [`sbx` CLI](https://docs.docker.com/ai/sandboxes/get-started/)가 필요합니다.
+데스크톱 앱은 선택 사항이며 소스에서 빌드할 수 있습니다:
 
+```bash
+npm run desktop:dev       # dev
+npm run desktop:dist:mac  # macOS
 ```
-npx @cloudcli-ai/cloudcli@latest sandbox ~/my-project
-```
-
-Claude Code, Codex를 지원합니다. 자세한 내용은 [샌드박스 문서](../docker/)를 참고하세요.
-
----
-
-## 어느 옵션이 적합한가요?
-
-CloudCLI UI는 CloudCLI Cloud를 구동하는 오픈 소스 UI 계층입니다. 로컬 머신에서 직접 셀프 호스트하거나, CloudCLI Cloud(완전 관리형 클라우드 환경, 팀 기능, 심화 통합 제공)를 사용할 수 있습니다.
-
-| | CloudCLI UI (셀프 호스트) | CloudCLI Cloud |
-|---|---|---|
-| **적합한 대상** | 로컬 에이전트 세션을 위한 전체 UI가 필요한 개발자 | 어디서든 접근 가능한 클라우드에서 에이전트를 운영하고자 하는 팀 및 개발자 |
-| **접근 방법** | `[yourip]:port`를 통해 브라우저 접속 | 브라우저, IDE, REST API, n8n |
-| **설정** | `npx @cloudcli-ai/cloudcli` | 설정 불필요 |
-| **기기 유지 필요 여부** | 예 (머신 켜둬야 함) | 아니오 |
-| **모바일 접근** | 네트워크 내 브라우저 | 모든 기기 (네이티브 앱 예정) |
-| **세션 접근** | `~/.claude`에서 자동 발견 | 클라우드 환경 내 세션 |
-| **지원 에이전트** | Claude Code, Cursor CLI, Codex | Claude Code, Cursor CLI, Codex |
-| **파일 탐색기 및 Git** | UI에 통합됨 | UI에 통합됨 |
-| **MCP 구성** | UI에서 관리, 로컬 `~/.claude` 설정과 동기화됨 | UI에서 관리 |
-| **IDE 접근** | 로컬 IDE | 클라우드 환경에 연결된 모든 IDE |
-| **REST API** | 예 | 예 |
-| **n8n 노드** | 아니오 | 예 |
-| **팀 공유** | 아니오 | 예 |
-| **플랫폼 비용** | 무료, 오픈 소스 | 월 €7부터 |
-
-> 둘 다 자체 AI 구독(Claude, Cursor 등)을 그대로 사용합니다 — CloudCLI는 환경만 제공합니다.
 
 ---
 
@@ -217,8 +184,7 @@ CloudCLI UI와 CloudCLI Cloud는 Claude Code를 확장하며 별도로 존재하
 ## 커뮤니티 및 지원
 
 - **[문서](https://cloudcli.ai/docs)** — 설치, 구성, 기능, 문제 해결 안내
-- **[Discord](https://discord.gg/buxwujPNRE)** — 도움 및 커뮤니티 참여
-- **[GitHub Issues](https://github.com/siteboon/claudecodeui/issues)** — 버그 보고 및 기능 요청
+- **[GitHub Issues](https://github.com/fph9116f-code/claudecodeui-codex/issues)** — 버그 보고 및 기능 요청
 - **[기여 안내](../CONTRIBUTING.md)** — 프로젝트 참여 방법
 
 ## 라이선스
@@ -239,8 +205,6 @@ GNU General Public License v3.0 - 자세한 내용은 [LICENSE](../LICENSE) 파�
 - **[CodeMirror](https://codemirror.net/)** - 고급 코드 에디터
 - **[TaskMaster AI](https://github.com/eyaltoledano/claude-task-master)** *(선택사항)* - AI 기반 프로젝트 관리 및 작업 계획
 
-### 스폰서
-- [Siteboon - AI powered website builder](https://siteboon.ai)
 ---
 
 <div align="center">
