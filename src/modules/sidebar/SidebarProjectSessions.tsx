@@ -29,6 +29,7 @@ type SidebarProjectSessionsProps = {
   onProjectSelect: (project: Project) => void;
   onSessionSelect: (session: SessionWithProvider, projectName: string) => void;
   onDeleteSession: (sessionId: string, sessionTitle: string) => void;
+  onArchiveSession: (sessionId: string) => void;
   onForkSession?: (session: SessionWithProvider) => void;
   onLoadMoreSessions: (projectId: string) => void;
   onNewSession: (project: Project) => void;
@@ -81,6 +82,7 @@ export default function SidebarProjectSessions({
   onProjectSelect,
   onSessionSelect,
   onDeleteSession,
+  onArchiveSession,
   onForkSession,
   onLoadMoreSessions,
   onNewSession,
@@ -237,6 +239,7 @@ export default function SidebarProjectSessions({
               onProjectSelect={onProjectSelect}
               onSessionSelect={onSessionSelect}
               onDeleteSession={onDeleteSession}
+              onArchiveSession={onArchiveSession}
               onForkSession={onForkSession}
               isSelecting={isSelecting}
               isChecked={checkedSessionIds.has(session.id)}

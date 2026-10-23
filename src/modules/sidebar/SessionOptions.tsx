@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Check, Edit2, GitBranch, MoreHorizontal, Trash2, X } from 'lucide-react';
+import { Archive, Check, Edit2, GitBranch, MoreHorizontal, Trash2, X } from 'lucide-react';
 import type { TFunction } from 'i18next';
 
 import { ActionMenu } from '@/shared/ui';
@@ -27,6 +27,8 @@ type SessionOptionsProps = {
   onCancelEditingSession: () => void;
   onSaveEditingSession: (projectId: string, sessionId: string, summary: string, provider: LLMProvider) => void;
   onDeleteSession: (sessionId: string, sessionTitle: string) => void;
+  /** Archives this session straight away, without opening the delete dialog. */
+  onArchiveSession: (sessionId: string) => void;
   /** Bound by the caller, which owns the session object the fork needs. */
   onFork?: () => void;
   /** Withheld where the row has nowhere to send a delete. */
@@ -57,6 +59,7 @@ export default function SessionOptions({
   onCancelEditingSession,
   onSaveEditingSession,
   onDeleteSession,
+  onArchiveSession,
   onFork,
   canDelete = true,
   className,
@@ -100,6 +103,22 @@ export default function SessionOptions({
 
   return (
     <div ref={containerRef} className={cn('flex items-center gap-1', className)}>
+      {/* One-click archive, mirroring the codex list; the "..." menu still
+          offers the full archive-or-delete flow. */}
+      {!isEditing && canDelete && !isProcessing && (
+        <button
+          type="button"
+          title="Archive session"
+          aria-label={`Archive session ${sessionName}`}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-colors hover:bg-muted hover:opacity-100"
+          onClick={(event) => {
+            event.stopPropagation();
+            onArchiveSession(sessionId);
+          }}
+        >
+          <Archive className="h-3.5 w-3.5" />
+        </button>
+      )}
       {isEditing ? (
         <>
           <input

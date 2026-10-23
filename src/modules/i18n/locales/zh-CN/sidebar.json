@@ -124,6 +124,14 @@
     "deleteSessionsPartialFailure_one": "{{total}} 个会话中有 {{count}} 个删除失败，请重试。",
     "deleteSessionsPartialFailure_other": "{{total}} 个会话中有 {{count}} 个删除失败，请重试。"
   },
+  "archiveToast": {
+    "archived": "会话已归档",
+    "archivedCount": "{{count}} 个会话已归档",
+    "restored": "已撤销归档",
+    "restoredCount": "已恢复 {{count}} 个会话",
+    "undo": "撤销",
+    "dismiss": "关闭"
+  },
   "version": {
     "updateAvailable": "有可用更新",
     "restartRequired": "已安装更新 — 请重启服务器以生效"

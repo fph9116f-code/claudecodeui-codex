@@ -4,7 +4,7 @@ import type { TFunction } from 'i18next';
 import { api } from '@/shared/api';
 import { subscribeToUserPreferences } from '@/shared/userSettings';
 import { usePaletteOps } from '@/modules/command-palette';
-import type { ArchivedProjectListItem, ArchivedSessionListItem, ConversationProjectResult, ConversationSearchResults, LLMProvider, Project, ProjectSession, ProjectSortOrder, RecentConversationListItem, SearchProgress, ActiveSidebarRename, PendingSidebarDeletion, SessionTitleSearchResult, SessionWithProvider, SidebarSearchMode, SidebarSessionSelection } from '@/shared/types';
+import type { ArchivedProjectListItem, ArchivedSessionListItem, ConversationProjectResult, ConversationSearchResults, LLMProvider, Project, ProjectSession, ProjectSortOrder, RecentConversationListItem, SearchProgress, ActiveSidebarRename, PendingSidebarDeletion, SessionTitleSearchResult, SessionWithProvider, SidebarArchiveToast, SidebarSearchMode, SidebarSessionSelection } from '@/shared/types';
 import {
   filterProjects,
   getAllSessions,
@@ -104,10 +104,21 @@ export function useSidebarController({
   // feeds runs from this hook, and because holding a single selection is what
   // keeps a bulk delete from spanning two projects. See SidebarSessionSelection.
   const [sessionSelection, setSessionSelection] = useState<SidebarSessionSelection | null>(null);
-  // The ids a bulk delete has sent and not yet heard back about. A ref, not
-  // state: nothing renders from it, it only stops a second confirmation of the
-  // same rows (still on screen until the first settles) from sending them again.
+  // The ids a delete or quick archive has sent and not yet heard back about. A
+  // ref, not state: nothing renders from it, it only stops a second click or
+  // confirmation of the same row (still on screen until the first settles) from
+  // sending it again.
   const sessionIdsBeingDeletedRef = useRef<Set<string>>(new Set());
+  // Read at click time by the quick archive action. A ref rather than callback
+  // dependencies: these sets change on every status frame, and rebuilding the
+  // callback would defeat the memo boundary on every session row.
+  const sessionActivityRef = useRef({ activeSessions, backgroundSessionIds });
+  useEffect(() => {
+    sessionActivityRef.current = { activeSessions, backgroundSessionIds };
+  }, [activeSessions, backgroundSessionIds]);
+  // The archive notice currently on screen. It owns the only undo affordance
+  // for a row that has just left the list, so it lives above the rows.
+  const [archiveToast, setArchiveToast] = useState<SidebarArchiveToast | null>(null);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [searchMode, setSearchMode] = useState<SidebarSearchMode>('projects');
   const [conversationResults, setConversationResults] = useState<ConversationSearchResults | null>(null);
@@ -860,14 +871,25 @@ export function useSidebarController({
     [],
   );
 
-  const confirmDeleteSession = useCallback(async (hardDelete = false) => {
-    if (pendingDeletion?.kind !== 'session') {
-      return;
-    }
+  /**
+   * Adds the just-archived sessions to the notice. Rapid one-click archives
+   * accumulate into one toast, so a later archive cannot take away the undo
+   * for an earlier one; undoing it restores the whole batch.
+   */
+  const showArchivedToast = useCallback((sessionIds: readonly string[]) => {
+    setArchiveToast((previous) => {
+      const ids = new Set(previous?.kind === 'archived' ? previous.sessionIds : []);
+      sessionIds.forEach((sessionId) => ids.add(sessionId));
+      return { kind: 'archived', sessionIds: [...ids] };
+    });
+  }, []);
 
-    const { sessionId } = pendingDeletion;
-    setPendingDeletion(null);
-
+  /**
+   * Sends one session's archive-or-delete request and applies the sidebar
+   * bookkeeping. Shared by the confirmation dialog and the row's quick archive
+   * button so the two paths cannot drift.
+   */
+  const removeSession = useCallback(async (sessionId: string, hardDelete: boolean) => {
     try {
       const response = await api.deleteSession(sessionId, hardDelete);
 
@@ -884,6 +906,10 @@ export function useSidebarController({
           return remaining;
         });
         await fetchArchivedSessions();
+        if (!hardDelete) {
+          // Soft archive: offer the undo that restores this exact session.
+          showArchivedToast([sessionId]);
+        }
       } else {
         const errorText = await response.text();
         console.error('[Sidebar] Failed to delete session:', {
@@ -896,7 +922,38 @@ export function useSidebarController({
       console.error('[Sidebar] Error deleting session:', error);
       alert(t('messages.deleteSessionError'));
     }
-  }, [fetchArchivedSessions, onSessionDelete, pendingDeletion, t]);
+  }, [fetchArchivedSessions, onSessionDelete, showArchivedToast, t]);
+
+  const confirmDeleteSession = useCallback(async (hardDelete = false) => {
+    if (pendingDeletion?.kind !== 'session') {
+      return;
+    }
+
+    const { sessionId } = pendingDeletion;
+    setPendingDeletion(null);
+    await removeSession(sessionId, hardDelete);
+  }, [pendingDeletion, removeSession]);
+
+  /**
+   * 行内归档按钮：直接软归档，不弹确认框，归档后仍可在归档页恢复。
+   * 运行中的会话不归档，否则下一次 transcript 同步会立即把它取消归档。
+   */
+  const archiveSession = useCallback(async (sessionId: string) => {
+    if (sessionIdsBeingDeletedRef.current.has(sessionId)) {
+      return;
+    }
+    const { activeSessions: active, backgroundSessionIds: background } = sessionActivityRef.current;
+    if (active.has(sessionId) && !background.has(sessionId)) {
+      return;
+    }
+
+    sessionIdsBeingDeletedRef.current.add(sessionId);
+    try {
+      await removeSession(sessionId, false);
+    } finally {
+      sessionIdsBeingDeletedRef.current.delete(sessionId);
+    }
+  }, [removeSession]);
 
   const setProjectSessionSelection = useCallback((selection: SidebarSessionSelection) => {
     setSessionSelection(selection);
@@ -1002,6 +1059,10 @@ export function useSidebarController({
         setRecentConversationsTotal((total) => Math.max(0, total - removed));
       }
       await fetchArchivedSessions();
+      if (!hardDelete) {
+        // Undo restores every session that actually went, not the ones skipped.
+        showArchivedToast(deletedSessionIds);
+      }
     }
 
     if (failedSessionIds.length > 0) {
@@ -1019,7 +1080,7 @@ export function useSidebarController({
         }),
       );
     }
-  }, [activeSessions, backgroundSessionIds, fetchArchivedSessions, onSessionDelete, pendingDeletion, recentConversations, sessionSelection, t]);
+  }, [activeSessions, backgroundSessionIds, fetchArchivedSessions, onSessionDelete, pendingDeletion, recentConversations, sessionSelection, showArchivedToast, t]);
 
   const requestProjectDelete = useCallback(
     (project: Project) => {
@@ -1124,28 +1185,73 @@ export function useSidebarController({
     }
   }, [fetchArchivedSessions, onRefresh, t]);
 
-  const restoreArchivedSession = useCallback(async (sessionId: string) => {
+  /**
+   * Restores archived sessions in one pass and refreshes the lists that show
+   * them. Shared by the archive view's restore action and the undo toast.
+   * Returns true only when every session came back.
+   */
+  const restoreSessions = useCallback(async (sessionIds: readonly string[]): Promise<boolean> => {
+    if (sessionIds.length === 0) {
+      return false;
+    }
+
     try {
-      const response = await api.restoreSession(sessionId);
-      if (!response.ok) {
-        const errorText = await response.text();
+      const responses = await Promise.all(
+        sessionIds.map((sessionId) => api.restoreSession(sessionId)),
+      );
+      const failedResponse = responses.find((response) => !response.ok);
+      if (failedResponse) {
+        const errorText = await failedResponse.text();
         console.error('[Sidebar] Failed to restore session:', {
-          status: response.status,
+          status: failedResponse.status,
           error: errorText,
         });
         alert(t('messages.restoreSessionFailed', 'Failed to restore session. Please try again.'));
-        return;
+        return false;
       }
 
       await Promise.all([
         Promise.resolve(onRefresh()),
         fetchArchivedSessions(),
       ]);
+      return true;
     } catch (error) {
       console.error('[Sidebar] Error restoring session:', error);
       alert(t('messages.restoreSessionError', 'Error restoring session. Please try again.'));
+      return false;
     }
   }, [fetchArchivedSessions, onRefresh, t]);
+
+  const restoreArchivedSession = useCallback((sessionId: string) => {
+    void restoreSessions([sessionId]);
+  }, [restoreSessions]);
+
+  const dismissArchiveToast = useCallback(() => {
+    setArchiveToast(null);
+  }, []);
+
+  /**
+   * Restores the sessions named by the archive toast, then swaps the toast for
+   * a short confirmation. The recents feed needs its own refetch because the
+   * archived row was pruned from it locally.
+   */
+  const undoArchive = useCallback(async () => {
+    if (archiveToast?.kind !== 'archived' || archiveToast.sessionIds.length === 0) {
+      return;
+    }
+
+    const { sessionIds } = archiveToast;
+    setArchiveToast(null);
+
+    if (await restoreSessions(sessionIds)) {
+      reloadRecentConversations();
+      // A newer archive may have replaced the notice while restore was out.
+      setArchiveToast((current) => current ?? { kind: 'restored', sessionIds });
+    } else {
+      // Keep the undo affordance alive so the user can retry a failed restore.
+      setArchiveToast((current) => current ?? { kind: 'archived', sessionIds });
+    }
+  }, [archiveToast, reloadRecentConversations, restoreSessions]);
 
   const refreshProjects = useCallback(async () => {
     setIsRefreshing(true);
@@ -1284,6 +1390,10 @@ export function useSidebarController({
     saveProjectName,
     showDeleteSessionConfirmation,
     confirmDeleteSession,
+    archiveSession,
+    archiveToast,
+    dismissArchiveToast,
+    undoArchive,
     sessionSelection,
     setProjectSessionSelection,
     toggleSessionSelected,

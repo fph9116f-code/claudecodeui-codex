@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
-import { Check, CheckSquare, Edit2, Loader2, MoreHorizontal, Square, Trash2, X } from 'lucide-react';
+import { Archive, Check, CheckSquare, Edit2, Loader2, MoreHorizontal, Square, Trash2, X } from 'lucide-react';
 import type { TFunction } from 'i18next';
 
 import { Badge, Dialog, DialogContent, DialogTitle, LLMProviderLogo, Tooltip, buttonVariants } from '@/shared/ui';
@@ -30,6 +30,8 @@ type SidebarSessionItemProps = {
   onProjectSelect: (project: Project) => void;
   onSessionSelect: (session: SessionWithProvider, projectName: string) => void;
   onDeleteSession: (sessionId: string, sessionTitle: string) => void;
+  /** Archives this session in one click, from the button beside the "..." menu. */
+  onArchiveSession: (sessionId: string) => void;
   /** Branches this session into an independent one; absent when its provider cannot. */
   onForkSession?: (session: SessionWithProvider) => void;
   /** This project's list is in bulk-selection mode: the row acts as a checkbox and hides its options. */
@@ -59,6 +61,7 @@ function SidebarSessionItem({
   onProjectSelect,
   onSessionSelect,
   onDeleteSession,
+  onArchiveSession,
   onForkSession,
   isSelecting,
   isChecked,
@@ -229,19 +232,35 @@ function SidebarSessionItem({
             </div>
 
             {!isSelecting && (
-              <button
-                type="button"
-                aria-label={`Session options for ${sessionView.sessionName}`}
-                aria-haspopup="dialog"
-                aria-expanded={isMobileOptionsOpen}
-                className="ml-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted active:scale-95"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setMobileOptionsOpen(true);
-                }}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
+              <>
+                {!isProcessing && (
+                  <button
+                    type="button"
+                    title="Archive session"
+                    aria-label={`Archive session ${sessionView.sessionName}`}
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted active:scale-95"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onArchiveSession(session.id);
+                    }}
+                  >
+                    <Archive className="h-4 w-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-label={`Session options for ${sessionView.sessionName}`}
+                  aria-haspopup="dialog"
+                  aria-expanded={isMobileOptionsOpen}
+                  className="ml-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted active:scale-95"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setMobileOptionsOpen(true);
+                  }}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -387,7 +406,7 @@ function SidebarSessionItem({
           className={cn(
             buttonVariants({ variant: 'ghost' }),
             'h-auto w-full justify-start rounded-md border bg-card p-2 text-left font-normal transition-all duration-150',
-            isSelecting ? 'pr-2' : 'pr-11',
+            isSelecting ? 'pr-2' : 'pr-[4.5rem]',
             isSelected ? 'border-primary/20 bg-primary/5' : 'border-border/30',
             !isSelected && isProcessing
               ? 'border-border/60 bg-muted/20 hover:bg-muted/25'
@@ -477,6 +496,7 @@ function SidebarSessionItem({
             onCancelEditingSession={onCancelEditingSession}
             onSaveEditingSession={onSaveEditingSession}
             onDeleteSession={onDeleteSession}
+            onArchiveSession={onArchiveSession}
             onFork={onForkSession ? () => onForkSession(session) : undefined}
             t={t}
           />

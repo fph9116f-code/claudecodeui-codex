@@ -125,6 +125,14 @@
     "deleteSessionsPartialFailure_one": "{{count}} session out of {{total}} could not be deleted. Please try again.",
     "deleteSessionsPartialFailure_other": "{{count}} of {{total}} sessions could not be deleted. Please try again."
   },
+  "archiveToast": {
+    "archived": "Session archived",
+    "archivedCount": "{{count}} sessions archived",
+    "restored": "Archive undone",
+    "restoredCount": "{{count}} sessions restored",
+    "undo": "Undo",
+    "dismiss": "Dismiss"
+  },
   "version": {
     "updateAvailable": "Update available",
     "restartRequired": "Update installed — restart the server to apply"

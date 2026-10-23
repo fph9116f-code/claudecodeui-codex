@@ -1493,6 +1493,17 @@ export type MobileTerminalSelectionManager = {
 
 /** The complete project-list state and callback bundle the sidebar assembles once and threads down through its project list, project rows and session rows. */
 /**
+ * The transient archive notice the sidebar shows after a successful archive,
+ * carrying the session ids its undo action would restore.
+ */
+export type SidebarArchiveToast = {
+  /** `archived` still offers undo; `restored` confirms that the undo succeeded. */
+  kind: 'archived' | 'restored';
+  /** One id for a row action, several for a bulk archive. */
+  sessionIds: string[];
+};
+
+/**
  * What a session row needs to draw its state and act on the session, named once
  * so the two lists that render a row — Projects and Conversations — cannot fall
  * out of step, and so a call site passes one prop instead of nine.
@@ -1514,6 +1525,8 @@ export type SessionRowActions = {
   onCancelEditingSession: () => void;
   onSaveEditingSession: (projectId: string, sessionId: string, summary: string, provider: LLMProvider) => void;
   onDeleteSession: (sessionId: string, sessionTitle: string) => void;
+  /** Archives one session immediately, without the archive-or-delete dialog, so the row's quick archive button stays a single click. */
+  onArchiveSession: (sessionId: string) => void;
   /** Branches a session into an independent one. Rows hide it for providers that cannot. */
   onForkSession?: (session: SessionWithProvider) => void;
 };

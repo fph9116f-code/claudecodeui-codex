@@ -12,6 +12,7 @@ import type { LLMProvider, LoadingProgress, MCPServerStatus, Project, ProjectSes
 import SidebarCollapsed from '@/modules/sidebar/SidebarCollapsed';
 import SidebarContent from '@/modules/sidebar/SidebarContent';
 import SidebarModals from '@/modules/sidebar/SidebarModals';
+import SidebarArchiveToast from '@/modules/sidebar/SidebarArchiveToast';
 
 type SidebarProps = {
   projects: Project[];
@@ -125,6 +126,10 @@ function Sidebar({
     saveProjectName,
     showDeleteSessionConfirmation,
     confirmDeleteSession,
+    archiveSession,
+    archiveToast,
+    dismissArchiveToast,
+    undoArchive,
     sessionSelection,
     setProjectSessionSelection,
     toggleSessionSelected,
@@ -222,6 +227,7 @@ function Sidebar({
     onDeleteProject: requestProjectDelete,
     onSessionSelect: handleSessionClick,
     onDeleteSession: showDeleteSessionConfirmation,
+    onArchiveSession: archiveSession,
     onForkSession: forkSession,
     onLoadMoreSessions: loadMoreSessionsForProject,
     onNewSession,
@@ -356,6 +362,14 @@ function Sidebar({
         </>
       )}
 
+      <SidebarArchiveToast
+        toast={archiveToast}
+        onUndo={() => {
+          void undoArchive();
+        }}
+        onDismiss={dismissArchiveToast}
+        t={t}
+      />
     </>
   );
 }
