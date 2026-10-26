@@ -99,7 +99,12 @@
     "untitledSession": "Untitled Session",
     "projectFiles": "Project Files",
     "renameSessionHint": "{{title}} (double-click to rename)",
-    "renameSessionLabel": "Session title"
+    "renameSessionLabel": "Session title",
+    "sessionCreatedAt": "Created {{time}}",
+    "sessionId": "ID",
+    "sessionIdPending": "created after the first message",
+    "sessionIdPendingHint": "A provider session ID is generated when the first message is sent.",
+    "copySessionId": "Copy session ID"
   },
   "fileTree": {
     "loading": "Loading files...",

@@ -20,6 +20,13 @@
     "codex": "Codex",
     "opencode": "OpenCode"
   },
+  "activity": {
+    "label": "Activity",
+    "toolCount_one": "{{count}} tool",
+    "toolCount_other": "{{count}} tools",
+    "thoughtCount_one": "{{count}} thought",
+    "thoughtCount_other": "{{count}} thoughts"
+  },
   "tools": {
     "settings": "Tool Settings",
     "error": "Tool Error",
@@ -145,7 +152,8 @@
       "ctrlEnter": "Ctrl+Enter to send • Shift+Enter for new line • Tab to change modes • / for slash commands",
       "enter": "Enter to send • Shift+Enter for new line • Tab to change modes • / for slash commands",
       "queue": "Enter to queue your next message",
-      "updateQueued": "Enter to update queued message"
+      "updateQueued": "Enter to update queued message",
+      "queueOrInsert": "Enter to queue · ↗ to insert into the current turn"
     },
     "clickToChangeMode": "Click to change permission mode (or press Tab in input)",
     "showAllCommands": "Show all commands",
@@ -157,7 +165,20 @@
       "label": "Queued",
       "willSend": "Will send when this finishes",
       "edit": "Edit queued message",
-      "delete": "Delete queued message"
+      "delete": "Delete queued message",
+      "sending": "Sending…",
+      "unknown": "Outcome unknown",
+      "failed": "Send failed",
+      "retry": "Retry",
+      "skip": "Skip",
+      "editing": "Editing",
+      "cancelEdit": "Cancel edit",
+      "paused": "The queue is paused. Retry or skip this message to continue.",
+      "insertNow": "Insert into current turn",
+      "inserted": "Inserted into this turn",
+      "inserting": "Inserting…",
+      "insertFallback": "The current turn had already ended, so the message is kept in the queue and will be sent when the session is free.",
+      "insertFailed": "Failed to insert the queued message"
     }
   },
   "composer": {
@@ -172,6 +193,13 @@
       "filesNotReverted": "files the agent already changed are not reverted",
       "cancel": "Cancel"
     }
+  },
+  "emptyState": {
+    "newSessionHint": "Start a new session in this project",
+    "projectDirectory": "Project directory",
+    "copyDirectory": "Copy project directory",
+    "directoryCopied": "Project directory copied",
+    "sessionCount": "Sessions"
   },
   "providerSelection": {
     "title": "Choose Your AI Assistant",

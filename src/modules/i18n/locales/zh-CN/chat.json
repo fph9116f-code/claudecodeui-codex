@@ -20,6 +20,11 @@
     "codex": "Codex",
     "opencode": "OpenCode"
   },
+  "activity": {
+    "label": "处理过程",
+    "toolCount_other": "工具 {{count}} 次",
+    "thoughtCount_other": "思考 {{count}} 次"
+  },
   "tools": {
     "settings": "工具设置",
     "error": "工具错误",
@@ -132,7 +137,8 @@
       "ctrlEnter": "Ctrl+Enter 发送 • Shift+Enter 换行 • Tab 切换模式 • / 斜杠命令",
       "enter": "Enter 发送 • Shift+Enter 换行 • Tab 切换模式 • / 斜杠命令",
       "queue": "Enter 排队发送下一条消息",
-      "updateQueued": "Enter 更新排队消息"
+      "updateQueued": "Enter 更新排队消息",
+      "queueOrInsert": "Enter 排队 · ↗ 立即插入当前轮"
     },
     "clickToChangeMode": "点击更改权限模式（或在输入框中按 Tab）",
     "showAllCommands": "显示所有命令",
@@ -144,8 +150,28 @@
       "label": "已排队",
       "willSend": "将在当前完成后发送",
       "edit": "编辑排队消息",
-      "delete": "删除排队消息"
+      "delete": "删除排队消息",
+      "sending": "发送中…",
+      "unknown": "结果未知",
+      "failed": "发送失败",
+      "retry": "重试",
+      "skip": "跳过",
+      "editing": "编辑中",
+      "cancelEdit": "取消编辑",
+      "paused": "队列已暂停。请重试或跳过这条消息后继续。",
+      "insertNow": "立即插入当前轮",
+      "inserted": "已插入当前轮",
+      "inserting": "插入中…",
+      "insertFallback": "当前轮已经结束，消息已保留在队列中，将在会话空闲后发送。",
+      "insertFailed": "插入队列消息失败"
     }
+  },
+  "emptyState": {
+    "newSessionHint": "在此项目中开始新会话",
+    "projectDirectory": "项目目录",
+    "copyDirectory": "复制项目目录",
+    "directoryCopied": "项目目录已复制",
+    "sessionCount": "项目会话数"
   },
   "providerSelection": {
     "title": "选择您的 AI 助手",
