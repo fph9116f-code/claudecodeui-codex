@@ -1,4 +1,5 @@
 import { memo, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight } from 'lucide-react';
 
 import type { ChatMessage, ClaudePermissionSuggestion, PermissionGrantResult, LLMProvider,DiffLine,DiffStats,Project,ToolGroupItem } from '@/shared/types';
@@ -31,21 +32,26 @@ type ToolGroupContainerProps = {
  * not render a diff at all.
  */
 function useGroupDiffStats(
-  toolName: string,
   messages: ChatMessage[],
   createDiff: (oldStr: string, newStr: string) => DiffLine[],
 ): DiffStats | null {
   return useMemo(() => {
-    const config = getToolConfig(toolName).input;
-    if (config.contentType !== 'diff' || !config.getContentProps) {
-      return null;
-    }
-
     let added = 0;
     let removed = 0;
     let counted = 0;
 
+    // Stats are summed per row: a mixed run can hold several kinds of tool, so
+    // there is no single config for the whole group.
     for (const message of messages) {
+      if (!message.isToolUse || !message.toolName) {
+        continue;
+      }
+
+      const config = getToolConfig(message.toolName).input;
+      if (config.contentType !== 'diff' || !config.getContentProps) {
+        continue;
+      }
+
       const contentProps = config.getContentProps(parseToolPayload(message.toolInput) ?? {});
       if (typeof contentProps?.oldContent !== 'string' || typeof contentProps?.newContent !== 'string') {
         continue;
@@ -58,7 +64,7 @@ function useGroupDiffStats(
     }
 
     return counted > 0 ? { added, removed } : null;
-  }, [createDiff, messages, toolName]);
+  }, [createDiff, messages]);
 }
 
 function getToolGroupIcon(icon: string | undefined, toolName: string): string {
@@ -87,19 +93,22 @@ function ToolGroupContainer({
   provider,
 }: ToolGroupContainerProps) {
   const isExporting = useIsExportingTranscript();
+  const { t } = useTranslation('chat');
   // Collapsed on screen, always open in an export: the whole point of the
   // group row is to hide detail the reader can ask for, and an exported file
   // has no way to ask.
   const [isExpanded, setIsExpanded] = useState(false);
   const showChildren = isExpanded || isExporting;
-  const config = getToolConfig(group.toolName).input;
-  const label = config.label || group.toolName;
-  const borderClass = config.colorScheme?.border || 'border-border';
-  const iconClass = config.colorScheme?.icon || 'text-muted-foreground';
-  const icon = getToolGroupIcon(config.icon, group.toolName);
+  const config = getToolConfig(group.toolName || 'UnknownTool').input;
+  const label = group.isMixed
+    ? t('activity.label', { defaultValue: 'Activity' })
+    : (config.label || group.toolName);
+  const borderClass = group.isMixed ? 'border-border' : (config.colorScheme?.border || 'border-border');
+  const iconClass = group.isMixed ? 'text-muted-foreground' : (config.colorScheme?.icon || 'text-muted-foreground');
+  const icon = group.isMixed ? '•' : getToolGroupIcon(config.icon, group.toolName);
 
   const preview = group.preview;
-  const groupDiffStats = useGroupDiffStats(group.toolName, group.messages, createDiff);
+  const groupDiffStats = useGroupDiffStats(group.messages, createDiff);
 
   // Keys only have to be unique among this group's own rows, so repeats of the
   // same key are disambiguated here by occurrence.
@@ -129,9 +138,24 @@ function ToolGroupContainer({
           {icon}
         </span>
         <span className="min-w-0 flex-shrink-0 text-xs font-medium text-foreground">{label}</span>
-        <span className="flex-shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-          x{group.messages.length}
-        </span>
+        {group.isMixed ? (
+          <>
+            {group.toolCount > 0 && (
+              <span className="flex-shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {t('activity.toolCount', { count: group.toolCount })}
+              </span>
+            )}
+            {group.thinkingCount > 0 && (
+              <span className="flex-shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {t('activity.thoughtCount', { count: group.thinkingCount })}
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="flex-shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            x{group.messages.length}
+          </span>
+        )}
         {preview && (
           <>
             <span className="text-[10px] text-muted-foreground/40">/</span>
@@ -142,7 +166,18 @@ function ToolGroupContainer({
       </button>
 
       {showChildren && (
-        <div className="mt-2 space-y-3 sm:space-y-4">
+        // A folded run can hold a whole turn's commands and reasoning. Laid
+        // out inline it would push the answer far off screen and make the
+        // transcript jump as it grows, so on screen the rows live in a
+        // bounded box that scrolls on its own. An export has no scroll box,
+        // so its groups stay fully laid out.
+        <div
+          className={
+            isExporting
+              ? 'mt-2 space-y-3 sm:space-y-4'
+              : 'mt-2 max-h-[50vh] space-y-3 overflow-y-auto overscroll-contain rounded-md border border-border/50 bg-muted/10 p-2 sm:space-y-4'
+          }
+        >
           {group.messages.map((message, index) => (
             <MessageComponent
               key={messageKeys[index]}

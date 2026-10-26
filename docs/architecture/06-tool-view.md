@@ -7,9 +7,9 @@ This subsystem turns that pair into one card in the transcript: a command row, a
 checklist, a file list, a subagent timeline. What a tool looks like is not a conditional in
 a component. It is one entry in a registry keyed by the tool's name, and `ToolRenderer`
 switches on that entry. The hard parts are not the drawing. They are pairing a call with a
-result that arrives seconds later, deciding what to show in between, collapsing runs of the
-same tool into one row, and nesting a running subagent's calls inside the row that spawned
-it.
+result that arrives seconds later, deciding what to show in between, collapsing runs of
+non-conclusive rows — reasoning and tool calls — into one activity row, and nesting a
+running subagent's calls inside the row that spawned it.
 
 Read [the realtime stream](./02-realtime-stream.md) first for how the frames arrive, and
 [the message store](./04-message-store-and-lazy-loading.md) for what `merged` means.
@@ -292,8 +292,9 @@ non-null.
 
 ## Grouping consecutive calls
 
-**RULE: two or more consecutive calls to the same tool collapse into one row. A call that
-spawned an agent never joins one.**
+**RULE: two or more consecutive non-conclusive rows — tool calls of any kind and visible
+reasoning — collapse into one activity row. A call that spawned an agent, a workflow
+launch, an errored/denied call, a plan and a question never join one.**
 
 ```mermaid
 flowchart TD
@@ -301,8 +302,8 @@ flowchart TD
   B -->|"yes"| C["fold into the spawning row's timeline and skip the row"]
   B -->|"no"| D["project to ChatMessage"]
   D --> E["groupConsecutiveTools"]
-  E --> F{"run of two or more with the same toolName and no container"}
-  F -->|"yes"| G["ToolGroupItem carrying a preview"]
+  E --> F{"run of two or more activity rows"}
+  F -->|"yes"| G["ToolGroupItem carrying a preview and tool/thought counts"]
   F -->|"no"| H["plain rows"]
   G --> I["ToolGroupContainer"]
   H --> J{"isSubagentContainer"}
@@ -311,20 +312,28 @@ flowchart TD
   I -->|"when expanded or exporting"| L
 ```
 
-`groupConsecutiveTools(messages, showThinking = true)` walks the list once. A message is
-groupable when `isToolUse && toolName && !isSubagentContainer`. A run extends while the
-next message is groupable and has the same `toolName`. A message that renders nothing —
+`groupConsecutiveTools(messages, showThinking = true)` walks the list once. An activity row
+is a groupable tool call or, when `showThinking` is on, a visible reasoning row. A tool call
+is groupable when `isToolUse && toolName && !isSubagentContainer`, its name is not
+`Workflow`, it has not failed or been denied, and its config is neither a plan nor a
+question — those are conclusions the reader must see without expanding anything. A run
+extends across different tool names and visible reasoning. A message that renders nothing —
 reasoning while `showThinking` is off — is skipped rather than treated as a break, because
 Codex interleaves hidden reasoning between consecutive tool calls. Those skipped rows are
 consumed: they do not reappear in the returned list. `TOOL_GROUP_THRESHOLD` is 2, so a run
 of one is pushed through unchanged. The group carries the run's **first** timestamp, which
 is the `data-message-timestamp` the transcript search jump matches on.
 
+The group is *homogeneous* when every row is a tool call with the same name; it then uses
+that tool's label, border and icon, and its `x{n}` badge counts the calls. A run that mixes
+tools or reasoning is `isMixed`, labeled generically as Activity, and badges its
+`toolCount` and `thinkingCount` separately.
+
 The preview is built during grouping, not during render, by `buildGroupPreview`. The first
-`PREVIEWED_TOOL_COUNT = 2` messages are named by `getToolInputPreview`, which prefers the
+`PREVIEWED_TOOL_COUNT = 2` tool calls are named by `getToolInputPreview`, which prefers the
 config's `getValue` then its `title`; empties are filtered out. The remainder is
-`messages.length - named.length`, so **the names printed plus the remainder always equal
-the `x{n}` badge**. That is the invariant
+`toolCount - named.length`, so **the names printed plus the remainder always equal the
+number of tool calls**. That is the invariant
 `src/modules/chat/tests/toolGrouping.test.ts` is built around: a run of two where one input
 yields no text reads `/a.ts, +1 more`, and a run of five that names nothing reads
 `+5 more`.
@@ -332,8 +341,9 @@ yields no text reads `/a.ts, +1 more`, and a run of five that names nothing read
 `ToolGroupContainer` builds the collapsed button from the same config the cards use:
 `config.label` or the tool name, `config.colorScheme.border`, `config.colorScheme.icon`
 with `terminal` mapped to `$` and anything absent to the tool's uppercased first letter,
-the `x{n}` badge, the preview, and — via `useGroupDiffStats` — the summed `+N -M` for a run
-whose config has `contentType: 'diff'`. Expanding it renders the run's real
+the `x{n}` badge, the preview, and — via `useGroupDiffStats` — the summed `+N -M` for the
+run's diff-producing tools. A mixed run uses a neutral label, border and icon instead, and
+badges its tool and reasoning counts separately. Expanding it renders the run's real
 `MessageComponent` rows.
 
 ## Subagents

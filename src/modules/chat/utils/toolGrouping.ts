@@ -9,13 +9,16 @@ const PREVIEWED_TOOL_COUNT = 2;
 
 export type MessageListItem = ChatMessage | ToolGroupItem;
 
-/** A run of consecutive tool rows, already narrowed to the ones that can group. */
-type GroupableToolRun = (ChatMessage & { toolName: string })[];
+/** A run of consecutive rows that can be folded into one collapsed summary. */
+type ActivityRun = ChatMessage[];
+
+/** A tool row inside a run, narrowed to the name the summary needs. */
+type NamedToolMessage = ChatMessage & { toolName: string };
 
 type CachedToolGroup = {
   /** The exact run the group was built from; reused only while every row keeps its identity. */
-  run: GroupableToolRun;
-  /** Hidden reasoning both joins runs and changes what the preview names, so it is part of the key. */
+  run: ActivityRun;
+  /** Hidden reasoning changes what the run contains, so it is part of the key. */
   showThinking: boolean;
   group: ToolGroupItem;
 };
@@ -28,25 +31,36 @@ type CachedToolGroup = {
 // weakly on the run's first row so entries disappear with the rows themselves.
 const toolGroupCache = new WeakMap<ChatMessage, CachedToolGroup>();
 
-function isSameRun(cachedRun: GroupableToolRun, run: GroupableToolRun): boolean {
+function isSameRun(cachedRun: ActivityRun, run: ActivityRun): boolean {
   return cachedRun.length === run.length
     && cachedRun.every((message, index) => message === run[index]);
 }
 
 /** The group object for a run, reused unchanged while the run's rows are unchanged. */
-function getToolGroup(run: GroupableToolRun, showThinking: boolean): ToolGroupItem {
+function getToolGroup(run: ActivityRun, showThinking: boolean): ToolGroupItem {
   const first = run[0];
   const cached = toolGroupCache.get(first);
   if (cached && cached.showThinking === showThinking && isSameRun(cached.run, run)) {
     return cached.group;
   }
 
+  const toolMessages = run.filter(isNamedToolMessage);
+  const toolNames = new Set(toolMessages.map((message) => message.toolName));
+  const thinkingCount = run.length - toolMessages.length;
+  // Mixed runs are summarized generically: "Bash" would be a lie about the
+  // reasoning next to it, and the first tool's name would be a lie about the
+  // rest.
+  const isMixed = thinkingCount > 0 || toolNames.size > 1;
+
   const group: ToolGroupItem = {
     _isGroup: true,
-    toolName: first.toolName,
+    toolName: toolMessages[0]?.toolName ?? '',
+    isMixed,
+    toolCount: toolMessages.length,
+    thinkingCount,
     messages: run,
     timestamp: first.timestamp,
-    preview: buildGroupPreview(run),
+    preview: buildGroupPreview(toolMessages),
   };
   toolGroupCache.set(first, { run, showThinking, group });
   return group;
@@ -56,17 +70,41 @@ export function isToolGroupItem(item: MessageListItem): item is ToolGroupItem {
   return '_isGroup' in item && (item as ToolGroupItem)._isGroup === true;
 }
 
-// An agent's or a workflow's row is its whole card — status, timeline, result —
-// so it never folds into a collapsed run with its neighbours.
-function isGroupableToolMessage(message: ChatMessage): message is ChatMessage & { toolName: string } {
-  return Boolean(message.isToolUse && message.toolName && !message.isSubagentContainer && message.toolName !== 'Workflow');
+function isNamedToolMessage(message: ChatMessage): message is NamedToolMessage {
+  return Boolean(message.isToolUse && message.toolName);
+}
+
+// A row may fold into a collapsed activity run. Agent and workflow rows are
+// excluded because each is its whole card — status, timeline, result — and a
+// failure, denied call, plan or question is a conclusion the reader must see
+// without expanding anything.
+function isGroupableToolMessage(message: ChatMessage): boolean {
+  if (!isNamedToolMessage(message) || message.isSubagentContainer || message.toolName === 'Workflow') {
+    return false;
+  }
+
+  if (
+    message.toolResult?.isError ||
+    message.toolStatus === 'error' ||
+    message.toolStatus === 'failed' ||
+    message.toolStatus === 'denied'
+  ) {
+    return false;
+  }
+
+  const config = getToolConfig(message.toolName).input;
+  return config.type !== 'plan' && config.contentType !== 'question-answer';
 }
 
 // Messages that render nothing (e.g. reasoning hidden when showThinking is off)
-// shouldn't split an otherwise-continuous run of the same tool — providers like
-// Codex interleave hidden reasoning between consecutive tool calls.
+// shouldn't split an otherwise-continuous activity run — providers like Codex
+// interleave hidden reasoning between consecutive tool calls.
 function rendersNothing(message: ChatMessage, showThinking: boolean): boolean {
   return Boolean(message.isThinking && !showThinking);
+}
+
+function isActivityRow(message: ChatMessage, showThinking: boolean): boolean {
+  return isGroupableToolMessage(message) || Boolean(message.isThinking && showThinking);
 }
 
 function parseToolInput(toolInput: unknown): unknown {
@@ -81,7 +119,7 @@ function parseToolInput(toolInput: unknown): unknown {
   }
 }
 
-function getToolInputPreview(message: ChatMessage): string {
+function getToolInputPreview(message: NamedToolMessage): string {
   const config = getToolConfig(message.toolName || 'UnknownTool').input;
   const parsedInput = parseToolInput(message.toolInput);
   const title = typeof config.title === 'function' ? config.title(parsedInput) : config.title;
@@ -98,7 +136,7 @@ function getToolInputPreview(message: ChatMessage): string {
  * group cache above can reuse — a run's preview depends on the whole run, which
  * is exactly what that cache compares.
  */
-function buildGroupPreview(messages: ChatMessage[]): string {
+function buildGroupPreview(messages: NamedToolMessage[]): string {
   const named = messages
     .slice(0, PREVIEWED_TOOL_COUNT)
     .map(getToolInputPreview)
@@ -130,13 +168,13 @@ export function groupConsecutiveTools(
   while (index < messages.length) {
     const message = messages[index];
 
-    if (!isGroupableToolMessage(message)) {
+    if (!isActivityRow(message, showThinking)) {
       items.push(message);
       index += 1;
       continue;
     }
 
-    const run: GroupableToolRun = [message];
+    const run: ActivityRun = [message];
     let nextIndex = index + 1;
 
     while (nextIndex < messages.length) {
@@ -148,7 +186,9 @@ export function groupConsecutiveTools(
         continue;
       }
 
-      if (isGroupableToolMessage(candidate) && candidate.toolName === message.toolName) {
+      // A run keeps going across different tools and visible reasoning; only a
+      // conclusive row (prose, user turn, error, plan) ends it.
+      if (isActivityRow(candidate, showThinking)) {
         run.push(candidate);
         nextIndex += 1;
         continue;
