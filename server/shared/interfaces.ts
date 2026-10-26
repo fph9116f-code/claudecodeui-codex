@@ -17,6 +17,7 @@ import type {
   ProviderRuntimeContext,
   ProviderRuntimePermissionGateway,
   ProviderRuntimeWriter,
+  SteerOutcome,
   UpsertProviderMcpServerInput,
   WorkflowAgentActivity,
 } from '@/shared/types.js';
@@ -37,6 +38,30 @@ export interface IProviderRuntime {
     context: ProviderRuntimeContext,
   ): Promise<unknown>;
   abort(sessionId: string): boolean | Promise<boolean>;
+  /**
+   * Adds a human message to the run already in flight for the session, without
+   * starting a second query. Returns false when nothing is running or the
+   * runtime cannot steer (no live input stream).
+   *
+   * Used by the Chat Queue's "insert now" action.
+   */
+  injectUserMessage?(
+    sessionId: string,
+    input: { content: string; attachments?: unknown[] },
+  ): boolean | Promise<boolean>;
+  /**
+   * Whether a message inserted into the current turn is still being answered
+   * in the live process. A runtime that keeps the process running after the
+   * turn's terminal result uses this to keep the session "busy" for callers
+   * that would otherwise start a new run and supersede it.
+   */
+  isSteering?(sessionId: string): boolean;
+  /**
+   * Installs the receiver for inserted-message outcomes. The Chat Queue uses
+   * it to mark the message delivered, failed or unknown as the live process
+   * reports back; a runtime that cannot steer leaves this undefined.
+   */
+  setSteerOutcomeListener?(listener: ((outcome: SteerOutcome) => void) | null): void;
   permissions?: ProviderRuntimePermissionGateway;
   /**
    * Sessions with background tasks still outstanding, whether or not their

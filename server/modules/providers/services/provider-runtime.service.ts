@@ -9,6 +9,7 @@ import type {
   ProviderRunFunction,
   ProviderRuntimeContext,
   ProviderRuntimeWriter,
+  SteerOutcome,
 } from '@/shared/types.js';
 
 type ProviderRuntimeServiceDependencies = {
@@ -91,6 +92,19 @@ export function createProviderRuntimeService(
       return Boolean(await dependencies.resolveProvider(providerName).runtime.abort(sessionId));
     },
 
+    async injectUserMessage(
+      providerName: LLMProvider,
+      sessionId: string,
+      input: { content: string; attachments?: unknown[] },
+    ): Promise<boolean> {
+      const { runtime } = dependencies.resolveProvider(providerName);
+      if (typeof runtime.injectUserMessage !== 'function') {
+        // Provider adapters without a live input stream cannot steer.
+        return false;
+      }
+      return Boolean(await runtime.injectUserMessage(sessionId, input));
+    },
+
     async stopBackgroundTask(providerName: LLMProvider, sessionId: string, taskId: string): Promise<boolean> {
       // A runtime that never holds background work has no task to stop.
       const { runtime } = dependencies.resolveProvider(providerName);
@@ -100,6 +114,17 @@ export function createProviderRuntimeService(
     hasBackgroundWork(sessionId: string): boolean {
       return dependencies.listProviders().some((provider) =>
         (provider.runtime.listBackgroundWork?.() ?? []).some((entry) => entry.sessionId === sessionId));
+    },
+
+    isSteering(sessionId: string): boolean {
+      return dependencies.listProviders().some((provider) =>
+        Boolean(provider.runtime.isSteering?.(sessionId)));
+    },
+
+    setSteerOutcomeListener(listener: ((outcome: SteerOutcome) => void) | null): void {
+      for (const provider of dependencies.listProviders()) {
+        provider.runtime.setSteerOutcomeListener?.(listener);
+      }
     },
 
     resolveToolApproval(requestId: string, decision: ProviderPermissionDecision): void {

@@ -285,6 +285,8 @@ export type SessionUpsertedEvent = {
     summary: string;
     messageCount: number;
     lastActivity: string;
+    /** ISO creation time; keeps the workspace header's identity stable across upserts. */
+    createdAt: string;
   };
   project: SessionUpsertedProject | null;
   timestamp: string;
@@ -427,6 +429,21 @@ export type TaskUsage = {
   totalTokens: number;
   toolUses: number;
   durationMs: number;
+};
+
+/**
+ * Outcome of a message inserted into a live provider turn ("insert now").
+ *
+ * `delivered` means the process completed a turn after the insert and accepted
+ * the message; `failed` means the run errored with inserted messages still
+ * pending; `unknown` means the process ended before either could be confirmed.
+ * The Chat Queue persists the outcome instead of replaying the message.
+ */
+export type SteerOutcome = {
+  provider: string;
+  sessionId: string;
+  status: 'delivered' | 'failed' | 'unknown';
+  error?: string;
 };
 
 /**

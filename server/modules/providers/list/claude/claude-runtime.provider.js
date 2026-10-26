@@ -44,6 +44,30 @@ import {
 import { createCompleteMessage, createNormalizedMessage } from '@/shared/utils.js';
 
 const activeSessions = new Map();
+// Input streams of live runs, keyed like activeSessions. "Insert now" pushes a
+// human message into the stream the CLI is already reading (priority 'now'),
+// so steering never starts a second query or aborts the current turn.
+// Cleared when the run loop ends, unless a newer run has replaced the entry.
+const activePromptInputs = new Map();
+// Sessions whose current process has had a message inserted with priority
+// 'now'. The CLI ends the turn's `result` before the steered message is
+// answered, but keeps running in the same process; until that process ends,
+// starting a new run would supersede it and kill the answer. Multiple steers
+// can be queued in one process, so the flag is cleared only when the process
+// goes away (removeSession / the run's finally), not on an intermediate result.
+const steeringSessions = new Set();
+// How many inserted messages each live process has not yet acknowledged with a
+// completed turn. The runtime uses this to keep stdin open across the
+// original turn's result (closing it there made every later insert fail) and
+// to report delivered/failed/unknown back to the Chat Queue.
+const pendingSteers = new Map();
+/**
+ * Receives steer outcomes: `{ provider, sessionId, status, error? }` with
+ * status `delivered` (a turn answered the inserted message), `failed` (the
+ * run errored while steers were pending) or `unknown` (the process ended
+ * first). Installed by the Chat Queue dispatcher through the runtime gateway.
+ */
+let steerOutcomeListener = null;
 // Outstanding background tasks per live session, keyed like activeSessions. An
 // entry lives exactly as long as the map entry it shadows: cleared when the
 // session is removed, and reset when a newer run takes the key over.
@@ -402,6 +426,18 @@ function removeSession(sessionId) {
   activeSessions.delete(sessionId);
   // No process, no background work: anything still tracked was killed with it.
   backgroundWork.clear(sessionId);
+  // Steered messages this process never acknowledged have an unknown outcome;
+  // report that before dropping the counters so the queue can pause instead of
+  // silently treating them as delivered.
+  if ((pendingSteers.get(sessionId) ?? 0) > 0) {
+    pendingSteers.set(sessionId, 0);
+    notifySteerOutcome(sessionId, {
+      status: 'unknown',
+      error: 'The run ended before the inserted message was confirmed.'
+    });
+  }
+  pendingSteers.delete(sessionId);
+  steeringSessions.delete(sessionId);
   // See addSession: a page cached while the process was up still says
   // `running` for any agent that never reported back.
   sessionHistoryCache.invalidate(sessionId);
@@ -864,29 +900,61 @@ async function buildPromptMessages(command, images, files, cwd) {
 }
 
 /**
- * Wraps prompt messages in an async iterable that yields them and then parks.
+ * Wraps prompt messages in an async iterable the CLI keeps reading.
  *
  * The SDK closes the CLI's stdin as soon as its input iterable is exhausted (and
  * immediately on `result` for string prompts). The CLI reads that EOF as the end
  * of the run and kills anything still going in the background, so the iterable
  * has to stay pending until we actually want the process gone.
  *
+ * Besides the initial messages, `push` appends a message to the live stream.
+ * That is what makes "insert now" possible: the message reaches the CLI the
+ * turn is already running under, with `priority: 'now'`, instead of starting a
+ * second query or aborting the current one.
+ *
  * @param {Array<Object>} messages - SDKUserMessage records to send
- * @returns {{ stream: AsyncIterable, release: () => void }} Stream plus its closer
+ * @returns {{ stream: AsyncIterable, release: () => void, push: (message: Object) => boolean }}
  */
 function createHeldPromptStream(messages) {
-  let release;
-  const held = new Promise((resolve) => { release = resolve; });
+  const pending = [...messages];
+  let closed = false;
+  let wake = null;
+
+  const notify = () => {
+    const resume = wake;
+    wake = null;
+    resume?.();
+  };
 
   const stream = (async function* () {
-    for (const message of messages) {
-      yield message;
+    while (!closed || pending.length > 0) {
+      if (pending.length > 0) {
+        yield pending.shift();
+        continue;
+      }
+      // Keeps stdin open — the CLI stays alive until release() or a push().
+      await new Promise((resolve) => { wake = resolve; });
     }
-    // Keeps stdin open — the CLI stays alive until release() is called.
-    await held;
   })();
 
-  return { stream, release };
+  return {
+    stream,
+    release() {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      notify();
+    },
+    push(message) {
+      if (closed) {
+        return false;
+      }
+      pending.push(message);
+      notify();
+      return true;
+    }
+  };
 }
 
 /**
@@ -1028,6 +1096,9 @@ async function queryClaudeSDK(command, options = {}, ws, context) {
   // Hoisted above the try so the catch's cleanup can tell whether this run
   // still owns the activeSessions entry (or was superseded by a newer run).
   let queryInstance = null;
+  // The live input controller, kept outside the try so the finally can drop
+  // its map entry (only if a newer run has not replaced it).
+  let promptInputController = null;
 
   try {
     const resolvedModel = await context.resolveResumeModel(sessionId, options.model);
@@ -1166,8 +1237,17 @@ async function queryClaudeSDK(command, options = {}, ws, context) {
     // The SDK's own `query`, unless the caller supplies one (tests script the
     // stream to drive the hold logic below without a CLI process).
     const createQuery = context.createQuery ?? query;
+    // Closing stdin also withdraws the insert capability immediately: a push
+    // into a released stream would otherwise look possible and fail later.
+    const wrapRelease = (controller) => () => {
+      const key = sessionKey();
+      if (key && activePromptInputs.get(key) === controller) {
+        activePromptInputs.delete(key);
+      }
+      controller.release();
+    };
     let heldPrompt = createHeldPromptStream(promptMessages);
-    releasePromptStream = heldPrompt.release;
+    releasePromptStream = wrapRelease(heldPrompt);
     try {
       queryInstance = createQuery({
         prompt: heldPrompt.stream,
@@ -1181,7 +1261,7 @@ async function queryClaudeSDK(command, options = {}, ws, context) {
       // Discard the abandoned stream and build a fresh one for the retry.
       heldPrompt.release();
       heldPrompt = createHeldPromptStream(promptMessages);
-      releasePromptStream = heldPrompt.release;
+      releasePromptStream = wrapRelease(heldPrompt);
       queryInstance = createQuery({
         prompt: heldPrompt.stream,
         options: sdkOptions
@@ -1191,6 +1271,8 @@ async function queryClaudeSDK(command, options = {}, ws, context) {
     // Track the query instance for abort capability
     if (sessionKey()) {
       addSession(sessionKey(), queryInstance, ws, releasePromptStream);
+      promptInputController = heldPrompt;
+      activePromptInputs.set(sessionKey(), heldPrompt);
     }
 
     // Process streaming messages
@@ -1305,6 +1387,13 @@ async function queryClaudeSDK(command, options = {}, ws, context) {
         // The turn is done as far as the client is concerned.
         const abortPending = sessionKey() ? abortedSessionIds.has(sessionKey()) : false;
         const stillOutstanding = backgroundWork.hasOutstanding(sessionKey());
+        // A result after the turn's own terminal complete is a follow-up turn
+        // (background work or a steered message) reporting in. Any inserted
+        // messages that were waiting for this process have now been accepted.
+        if (turnCompleteSent && sessionKey() && (pendingSteers.get(sessionKey()) ?? 0) > 0) {
+          pendingSteers.set(sessionKey(), 0);
+          notifySteerOutcome(sessionKey(), { status: 'delivered' });
+        }
         if (!turnCompleteSent && !abortPending) {
           turnCompleteSent = true;
           ws.send(createCompleteMessage({ provider: 'claude', sessionId: capturedSessionId || sessionId || null, exitCode: 0 }));
@@ -1348,6 +1437,11 @@ async function queryClaudeSDK(command, options = {}, ws, context) {
         if (holdForTurn) {
           heldForBackgroundWork = true;
           scheduleRelease();
+        } else if (sessionKey() && (pendingSteers.get(sessionKey()) ?? 0) > 0) {
+          // Steered messages are still waiting to be answered by this live
+          // process. Closing stdin here is what made every insert after the
+          // first result fail; the follow-up result (or process shutdown)
+          // releases it instead.
         } else {
           // Either nothing was backgrounded, or the background work just
           // reported in — let the CLI exit now, as it always has.
@@ -1418,6 +1512,13 @@ async function queryClaudeSDK(command, options = {}, ws, context) {
       ? 'Claude Code is not installed. Please install it first: https://docs.anthropic.com/en/docs/claude-code'
       : error.message;
 
+    // A process that dies with steered messages unanswered cannot deliver
+    // them; the queue must show that instead of assuming they were sent.
+    if (sessionKey() && (pendingSteers.get(sessionKey()) ?? 0) > 0) {
+      pendingSteers.set(sessionKey(), 0);
+      notifySteerOutcome(sessionKey(), { status: 'failed', error: errorContent });
+    }
+
     // Send error to WebSocket, then the terminal complete. A run that already
     // reported completion and then failed during its post-turn hold still
     // surfaces the error, but must not emit a second terminal complete.
@@ -1438,6 +1539,26 @@ async function queryClaudeSDK(command, options = {}, ws, context) {
     if (idleReleaseTimer) {
       clearTimeout(idleReleaseTimer);
       idleReleaseTimer = null;
+    }
+    // Only clear state this run installed: a superseding run owns the key now.
+    // A released stream has already removed its map entry, so "no entry" also
+    // means this run still owns the steering counters.
+    const finishKey = sessionKey();
+    if (
+      finishKey
+      && promptInputController
+      && (activePromptInputs.get(finishKey) === promptInputController || !activePromptInputs.has(finishKey))
+    ) {
+      if ((pendingSteers.get(finishKey) ?? 0) > 0) {
+        pendingSteers.set(finishKey, 0);
+        notifySteerOutcome(finishKey, {
+          status: 'unknown',
+          error: 'The run ended before the inserted message was confirmed.'
+        });
+      }
+      pendingSteers.delete(finishKey);
+      activePromptInputs.delete(finishKey);
+      steeringSessions.delete(finishKey);
     }
     releasePromptStream();
   }
@@ -1482,6 +1603,95 @@ async function abortClaudeSDKSession(sessionId) {
     // The run keeps going; let it emit its own terminal complete.
     abortedSessionIds.delete(sessionId);
     return false;
+  }
+}
+
+/** Whether an attachment descriptor is an image the CLI can read as an image block. */
+function isImageAttachmentDescriptor(descriptor) {
+  if (!descriptor || typeof descriptor !== 'object') {
+    return false;
+  }
+  const mimeType = typeof descriptor.mimeType === 'string' ? descriptor.mimeType : '';
+  if (mimeType.startsWith('image/')) {
+    return true;
+  }
+  const filePath = typeof descriptor.path === 'string' ? descriptor.path : '';
+  return /\.(gif|jpe?g|png|svg|webp)$/i.test(filePath);
+}
+
+/**
+ * Adds a human message to the run already in flight for a session.
+ *
+ * The message is pushed into the live stdin stream with `priority: 'now'`, so
+ * the CLI receives it inside the current turn — no second query, no abort and
+ * no process restart. Returns false when the session has no live input stream
+ * (nothing to steer) or the message carries nothing to send.
+ *
+ * Used by the Chat Queue's "insert now" action.
+ */
+async function injectClaudeUserMessage(sessionId, input = {}) {
+  const stream = activePromptInputs.get(sessionId);
+  if (!stream) {
+    return false;
+  }
+
+  const content = typeof input.content === 'string' ? input.content : '';
+  const attachments = Array.isArray(input.attachments) ? input.attachments : [];
+  if (!content.trim() && attachments.length === 0) {
+    return false;
+  }
+
+  const images = attachments.filter(isImageAttachmentDescriptor);
+  const files = attachments.filter((attachment) => !isImageAttachmentDescriptor(attachment));
+  const promptWithFiles = appendFilesInputTag(content, files);
+  const messageContent = normalizeImageDescriptors(images).length === 0
+    ? promptWithFiles
+    : await buildClaudeUserContent(promptWithFiles, images, undefined);
+
+  const pushed = stream.push({
+    type: 'user',
+    message: {
+      role: 'user',
+      content: messageContent
+    },
+    parent_tool_use_id: null,
+    // 'now' is the CLI's steering priority: it belongs to the current turn.
+    priority: 'now',
+    // Only a human message may steer a running turn.
+    origin: { kind: 'human' },
+    timestamp: new Date().toISOString()
+  });
+
+  if (pushed) {
+    steeringSessions.add(sessionId);
+    pendingSteers.set(sessionId, (pendingSteers.get(sessionId) ?? 0) + 1);
+  }
+  return pushed;
+}
+
+/** Whether the session's current process has a steered message still being answered. */
+function isClaudeSessionSteering(sessionId) {
+  return steeringSessions.has(sessionId);
+}
+
+/**
+ * Installs the listener that persists steer outcomes. Called by the Chat Queue
+ * dispatcher; without it, steered rows are settled on the next restart as
+ * `unknown`.
+ */
+export function setClaudeSteerOutcomeListener(listener) {
+  steerOutcomeListener = typeof listener === 'function' ? listener : null;
+}
+
+/** Reports one steer outcome without letting a listener failure break the run. */
+function notifySteerOutcome(sessionId, outcome) {
+  if (!sessionId || !steerOutcomeListener) {
+    return;
+  }
+  try {
+    steerOutcomeListener({ provider: 'claude', sessionId, ...outcome });
+  } catch (error) {
+    console.error('Steer outcome listener failed:', error?.message || error);
   }
 }
 
@@ -1588,6 +1798,12 @@ function reconnectSessionWriter(sessionId, newRawWs) {
 export const claudeRuntime = {
   run: queryClaudeSDK,
   abort: abortClaudeSDKSession,
+  // Chat Queue "insert now": steer the turn already in flight.
+  injectUserMessage: injectClaudeUserMessage,
+  // True while a steered message is still being answered in the live process.
+  isSteering: isClaudeSessionSteering,
+  // Receives delivered/failed/unknown outcomes for inserted messages.
+  setSteerOutcomeListener: setClaudeSteerOutcomeListener,
   permissions: {
     resolve: resolveToolApproval,
     listPending: getPendingApprovalsForSession,
@@ -1600,6 +1816,8 @@ export const claudeRuntime = {
 export {
   queryClaudeSDK,
   abortClaudeSDKSession,
+  injectClaudeUserMessage,
+  isClaudeSessionSteering,
   listClaudeSDKBackgroundWork,
   stopClaudeSDKTask,
   isClaudeSDKSessionActive,

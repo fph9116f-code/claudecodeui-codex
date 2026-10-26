@@ -18,6 +18,7 @@ import type {
   LLMProvider,
   ProviderPermissionDecision,
   ProviderRuntimeWriter,
+  SteerOutcome,
 } from '@/shared/types.js';
 import { parseIncomingJsonObject } from '@/shared/utils.js';
 
@@ -73,6 +74,20 @@ export type ProviderRuntimeGateway = {
     writer: ProviderRuntimeWriter,
   ): Promise<unknown>;
   abort(provider: LLMProvider, sessionId: string): Promise<boolean>;
+  /**
+   * Steers the run already in flight for a session. Resolves false when the
+   * provider cannot insert into a live turn; callers must not treat that as a
+   * delivered message.
+   */
+  injectUserMessage(
+    provider: LLMProvider,
+    sessionId: string,
+    input: { content: string; attachments?: unknown[] },
+  ): Promise<boolean>;
+  /** Whether a steered message is still being answered in the session's live process. */
+  isSteering(sessionId: string): boolean;
+  /** Receives delivered/failed/unknown outcomes for inserted messages. */
+  setSteerOutcomeListener(listener: ((outcome: SteerOutcome) => void) | null): void;
   stopBackgroundTask(provider: LLMProvider, sessionId: string, taskId: string): Promise<boolean>;
   /** Whether a provider runtime still holds background work for the session after its turn ended. */
   hasBackgroundWork(sessionId: string): boolean;
@@ -217,7 +232,7 @@ async function dispatchRun(
   dependencies: ChatWebSocketDependencies,
   extraRuntimeOptions: AnyRecord = {},
   beforeRun?: (run: NonNullable<ReturnType<typeof chatRunRegistry.startRun>>) => void | Promise<void>,
-): Promise<{ started: boolean; error: string | null }> {
+): Promise<{ started: boolean; error: string | null; aborted: boolean }> {
   const provider = session.provider as LLMProvider;
 
   const run = chatRunRegistry.startRun({
@@ -237,7 +252,7 @@ async function dispatchRun(
         sessionId
       );
     }
-    return { started: false, error: 'A run is already in progress for this session.' };
+    return { started: false, error: 'A run is already in progress for this session.', aborted: false };
   }
 
   const clientOptions = (data.options ?? {}) as AnyRecord;
@@ -302,7 +317,17 @@ async function dispatchRun(
     chatRunRegistry.completeRunIfCurrent(run, { exitCode: 1 });
   }
 
-  return { started: true, error: failure };
+  // A runtime may report a failure as an `error` event and then resolve
+  // normally (Claude does). An interactive client sees that event, but a
+  // detached caller has no socket, so put it in the result as well — a queued
+  // or scheduled turn must not be recorded as sent when the provider failed.
+  // `aborted` matters for the same reason: the promise resolves after an
+  // interrupt, but the turn never finished.
+  return {
+    started: true,
+    error: failure ?? run.writer.getLastError(),
+    aborted: run.writer.wasAborted(),
+  };
 }
 
 /**
@@ -616,21 +641,21 @@ export async function runDetachedChatTurn(
     interruptActiveRun?: boolean;
   },
   dependencies: ChatWebSocketDependencies,
-): Promise<{ started: boolean; error: string | null }> {
+): Promise<{ started: boolean; error: string | null; aborted: boolean }> {
   const session = sessionsDb.getSessionById(input.sessionId);
   if (!session) {
-    return { started: false, error: 'The session no longer exists.' };
+    return { started: false, error: 'The session no longer exists.', aborted: false };
   }
 
   const provider = session.provider as LLMProvider;
   if (!dependencies.runtime.hasRuntime(provider)) {
-    return { started: false, error: `Provider "${provider}" is not available.` };
+    return { started: false, error: `Provider "${provider}" is not available.`, aborted: false };
   }
 
   const activeRun = chatRunRegistry.getRun(input.sessionId);
   if (activeRun && activeRun.status === 'running') {
     if (!input.interruptActiveRun) {
-      return { started: false, error: 'A run was already in progress for this session.' };
+      return { started: false, error: 'A run was already in progress for this session.', aborted: false };
     }
     // Same shape as `chat.abort`: cancel the provider run and emit the
     // terminal `complete` on its behalf, so every watching client sees the
