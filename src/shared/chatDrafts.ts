@@ -1,9 +1,7 @@
 import { api } from '@/shared/api';
-import type { QueuedSendOptions } from '@/shared/types';
 
 /**
- * Unsent composer text and queued messages, stored in `auth.db` rather than in
- * the browser.
+ * Unsent composer text, stored in `auth.db` rather than in the browser.
  *
  * This is what lets a message half-typed on a laptop be finished on a phone —
  * the case the composer previously could not serve at all, because a draft only
@@ -12,26 +10,16 @@ import type { QueuedSendOptions } from '@/shared/types';
  * paint instead of a blank composer that fills in a moment later.
  *
  * A scope is a session id, or `project:<projectId>` for a chat that has not
- * been sent yet and so has no session. Drafts used to be keyed by project
- * alone, which meant every session in a project shared one draft.
+ * been sent yet and so has no session.
+ *
+ * This store holds text only. Messages waiting for a busy session are a
+ * separate, server-owned entity (`chat_queue_messages`, reached through
+ * `api.chatQueue`): sharing a row meant saving the composer could create,
+ * resurrect or clear a queued message.
  */
-
-/** A queued message as it is stored: text plus the send options it was composed under. */
-export type StoredQueuedMessage = {
-  content: string;
-  options?: QueuedSendOptions;
-  /** Legacy image-only descriptors retained for queued draft compatibility. */
-  images?: unknown[];
-  /**
-   * JSON-safe descriptors returned by POST /api/assets/files. Unlike browser
-   * File objects, they can follow a queued message across session switches.
-   */
-  attachments?: unknown[];
-};
 
 type DraftRecord = {
   text: string;
-  queuedMessage: StoredQueuedMessage | null;
 };
 
 /** Fired after any draft changes, from a local write or from a hydrate. */
@@ -46,7 +34,7 @@ const MIRROR_STORAGE_KEY = 'chat-drafts';
  */
 const SERVER_WRITE_DEBOUNCE_MS = 1_000;
 
-const EMPTY_DRAFT: DraftRecord = { text: '', queuedMessage: null };
+const EMPTY_DRAFT: DraftRecord = { text: '' };
 
 const listeners = new Set<() => void>();
 
@@ -56,10 +44,6 @@ let serverWriteTimer: ReturnType<typeof setTimeout> | null = null;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-);
-
-const isEmptyDraft = (draft: DraftRecord): boolean => (
-  draft.text === '' && draft.queuedMessage === null
 );
 
 function readMirror(): Map<string, DraftRecord> {
@@ -81,9 +65,6 @@ function readMirror(): Map<string, DraftRecord> {
       }
       restored.set(scope, {
         text: typeof value.text === 'string' ? value.text : '',
-        queuedMessage: isRecord(value.queuedMessage)
-          ? (value.queuedMessage as StoredQueuedMessage)
-          : null,
       });
     }
     return restored;
@@ -122,17 +103,14 @@ function flushServerWrites(): void {
     // timer callback: the mirror already holds the draft, and the next
     // keystroke re-sends it.
     try {
-      if (!draft || isEmptyDraft(draft)) {
+      if (!draft || !draft.text) {
         void api.user.deleteDraft(scope).catch((error: unknown) => {
           console.error('Failed to delete chat draft:', error);
         });
         continue;
       }
 
-      void api.user.saveDraft(scope, {
-        text: draft.text,
-        queuedMessage: draft.queuedMessage,
-      }).catch((error: unknown) => {
+      void api.user.saveDraft(scope, { text: draft.text }).catch((error: unknown) => {
         console.error('Failed to save chat draft:', error);
       });
     } catch (error) {
@@ -150,24 +128,16 @@ function queueServerWrite(scope: string): void {
   serverWriteTimer = setTimeout(flushServerWrites, SERVER_WRITE_DEBOUNCE_MS);
 }
 
-function flushServerWritesNow(): void {
-  if (serverWriteTimer !== null) {
-    clearTimeout(serverWriteTimer);
-    serverWriteTimer = null;
-  }
-  flushServerWrites();
-}
-
 function updateDraft(scope: string, update: Partial<DraftRecord>): void {
   const current = drafts.get(scope) ?? EMPTY_DRAFT;
   const next: DraftRecord = { ...current, ...update };
 
-  if (next.text === current.text && next.queuedMessage === current.queuedMessage) {
+  if (next.text === current.text) {
     return;
   }
 
   const nextDrafts = new Map(drafts);
-  if (isEmptyDraft(next)) {
+  if (!next.text) {
     nextDrafts.delete(scope);
   } else {
     nextDrafts.set(scope, next);
@@ -188,36 +158,6 @@ export function writeDraftText(scope: string, text: string): void {
   updateDraft(scope, { text });
 }
 
-export function readQueuedMessage(scope: string): StoredQueuedMessage | null {
-  const queued = drafts.get(scope)?.queuedMessage ?? null;
-  if (!queued) {
-    return null;
-  }
-
-  const attachments = Array.isArray(queued.attachments)
-    ? queued.attachments
-    : Array.isArray(queued.images)
-      ? queued.images
-      : [];
-
-  // A queued message with neither text nor attachments has nothing to send.
-  return queued.content.trim() || attachments.length > 0
-    ? { ...queued, attachments }
-    : null;
-}
-
-export function writeQueuedMessage(scope: string, message: StoredQueuedMessage): void {
-  updateDraft(scope, { queuedMessage: message });
-  // Queueing is a send-like action, so persist it before the tab can close.
-  flushServerWritesNow();
-}
-
-export function clearQueuedMessage(scope: string): void {
-  updateDraft(scope, { queuedMessage: null });
-  // Editing or cancelling must beat the server's next dispatcher poll.
-  flushServerWritesNow();
-}
-
 /** Subscribes to any draft change; returns the unsubscribe function. */
 export function subscribeToChatDrafts(listener: () => void): () => void {
   listeners.add(listener);
@@ -234,7 +174,7 @@ export function subscribeToChatDrafts(listener: () => void): () => void {
  * staler server copy would delete what they are in the middle of writing.
  */
 export async function hydrateChatDrafts(): Promise<void> {
-  let serverDrafts: Array<{ scope?: unknown; text?: unknown; queuedMessage?: unknown }> = [];
+  let serverDrafts: Array<{ scope?: unknown; text?: unknown }> = [];
 
   try {
     const response = await api.user.drafts();
@@ -262,9 +202,6 @@ export async function hydrateChatDrafts(): Promise<void> {
 
     merged.set(scope, {
       text: typeof draft.text === 'string' ? draft.text : '',
-      queuedMessage: isRecord(draft.queuedMessage)
-        ? (draft.queuedMessage as StoredQueuedMessage)
-        : null,
     });
   }
 

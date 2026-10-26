@@ -768,22 +768,51 @@ export type CommandModalPayload = {
   data: HelpCommandData | ModelCommandData | CostCommandData | StatusCommandData;
 };
 
-/** A composer message queued while its session is still busy, holding the text, the in-memory and already-uploaded attachments and the send options snapshotted at queue time so it can be auto-sent unchanged once the session goes idle. */
-export type QueuedDraft = {
+/** Lifecycle of one server-owned queued message: waiting, in flight, steered into the current turn, or stopped for a user decision. */
+export type ChatQueueMessageStatus = 'pending' | 'running' | 'steering' | 'steered' | 'failed' | 'unknown';
+
+/**
+ * A message submitted while its session was busy, as the server owns it.
+ *
+ * The queue lives in the backend, not in the draft store: it survives a
+ * reload and is dispatched by the server when the session's turn ends. Failed
+ * and unknown entries pause the session's queue until the user retries or
+ * skips them, because a turn that already started may have had side effects.
+ */
+export type ChatQueueMessage = {
+  id: string;
+  sessionId: string;
+  /** FIFO order within the session. */
+  position: number;
   content: string;
-  /** Browser files retained while this composer stays mounted, for editing. */
-  attachments: File[];
-  /** JSON-safe descriptors uploaded when the message is queued. */
-  uploadedAttachments?: unknown[];
-  /**
-   * Send options snapshotted at queue time. Persisted with the draft so the
-   * app-level auto-send can dispatch the message with the right model and
-   * permission settings while another session is being viewed.
-   */
-  options?: QueuedSendOptions;
+  /** Composer settings snapshotted when the message was queued. */
+  options: QueuedSendOptions;
+  /** Uploaded attachment descriptors (JSON-safe, unlike browser File objects). */
+  attachments: unknown[];
+  status: ChatQueueMessageStatus;
+  /** Incremented on edit; an update must send the version it read. */
+  version: number;
+  attempts: number;
+  failureReason: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
-/** The answer to the prompt shown when sending over a session's background work: send now (stopping that work), queue the message until the work finishes, or do nothing. */
+/** One session's queue plus why it is paused, if a failed turn is holding it. */
+export type ChatQueueSnapshot = {
+  messages: ChatQueueMessage[];
+  paused: boolean;
+  pauseReason: string | null;
+  /**
+   * Whether the server still has a live turn this session's messages can be
+   * inserted into. After a steer the run registry reports "completed" while
+   * the CLI keeps answering in the same process, so this is the only reliable
+   * signal for showing the insert action.
+   */
+  canInsert: boolean;
+};
+
+/** The answer to the background-work send prompt (send now, queue, or cancel). The composer now queues by default; the dialog remains for callers that still ask. */
 export type BackgroundSendChoice = 'send' | 'queue' | 'cancel';
 
 /** An open background-work send prompt, listing the session's own background tasks as display strings. */
@@ -845,10 +874,17 @@ export type QueuedSendOptions = Record<string, unknown>;
 /** Function that turns an old/new string pair into rendered diff lines; the chat session state supplies one memoized, caching instance so each file diff is computed only once. */
 export type DiffCalculator = (oldStr: string, newStr: string) => DiffLine[];
 
-/** A synthetic transcript entry standing for a run of consecutive calls to the same tool, produced by the message grouping pass and identified by its `_isGroup` flag so the message list can collapse the run into one expandable block. */
+/** A synthetic transcript entry standing for a run of consecutive non-conclusive rows (tool calls and visible reasoning), produced by the message grouping pass and identified by its `_isGroup` flag so the message list can collapse the run into one expandable block. */
 export type ToolGroupItem = {
   _isGroup: true;
+  /** The tool every row shares, or the first tool row's name when the run mixes tools; empty for a reasoning-only run. */
   toolName: string;
+  /** True when the run mixes tool names or reasoning, so the block is summarized generically instead of as one tool. */
+  isMixed: boolean;
+  /** How many tool calls the collapsed block stands for. */
+  toolCount: number;
+  /** How many reasoning rows the collapsed block stands for. */
+  thinkingCount: number;
   messages: ChatMessage[];
   timestamp: ChatMessage['timestamp'];
   /**

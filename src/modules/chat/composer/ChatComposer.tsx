@@ -10,11 +10,11 @@ import type {
   RefObject,
   TouchEvent,
 } from 'react';
-import { PaperclipIcon, MessageSquareIcon, XIcon, Loader2, ArrowUpIcon, PencilIcon } from 'lucide-react';
+import { PaperclipIcon, MessageSquareIcon, XIcon, Loader2, ArrowUpIcon, PencilIcon, CornerUpRightIcon } from 'lucide-react';
 
 import { useVoiceInput } from '@/modules/chat/hooks/useVoiceInput';
 import { useVoiceAvailable } from '@/modules/chat/hooks/useVoiceAvailable';
-import type { BackgroundSendChoice, BackgroundSendPrompt, QueuedDraft, ScheduledMessage, SlashCommand,SessionActivity,PendingPermissionRequest,PermissionMode,ProviderModelOption } from '@/shared/types';
+import type { ChatQueueMessage, ScheduledMessage, SlashCommand,SessionActivity,PendingPermissionRequest,PermissionMode,ProviderModelOption } from '@/shared/types';
 import {
   PromptInput,
   PromptInputHeader,
@@ -32,7 +32,6 @@ import VoiceInputButton from '@/modules/chat/composer/VoiceInputButton';
 import PermissionRequestsBanner from '@/modules/chat/composer/PermissionRequestsBanner';
 import TokenUsageSummary from '@/modules/chat/composer/TokenUsageSummary';
 import QueuedMessageCard from '@/modules/chat/composer/QueuedMessageCard';
-import BackgroundSendDialog from '@/modules/chat/composer/BackgroundSendDialog';
 import { ScheduleMessagePopover } from '@/modules/chat/composer/ScheduleMessagePopover';
 import { ScheduledMessageList } from '@/modules/chat/composer/ScheduledMessageList';
 import ComposerModelMenu from '@/modules/chat/composer/ComposerModelMenu';
@@ -72,9 +71,26 @@ type ChatComposerProps = {
   onClearInput: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement> | MouseEvent<HTMLButtonElement> | TouchEvent<HTMLButtonElement>) => void;
   isDragActive: boolean;
-  queuedDraft: QueuedDraft | null;
-  backgroundSendPrompt: BackgroundSendPrompt | null;
-  onResolveBackgroundSendPrompt: (choice: BackgroundSendChoice) => void;
+  /** The session's server-owned queue, oldest first. */
+  queueMessages: ChatQueueMessage[];
+  /** True while a failed or outcome-unknown turn is holding the queue. */
+  queuePaused: boolean;
+  queuePauseReason: string | null;
+  /** The server's live-turn signal; stays true while a steered follow-up runs. */
+  queueCanInsert: boolean;
+  editingQueueMessage: ChatQueueMessage | null;
+  /** A submit is in flight; actions are disabled instead of silently ignored. */
+  isSubmitting: boolean;
+  /** The queued message whose insert request is in flight. */
+  insertingMessageId: string | null;
+  onEditQueuedMessage: (message: ChatQueueMessage) => void;
+  onCancelQueuedEdit: () => void;
+  onDeleteQueuedMessage: (message: ChatQueueMessage) => void;
+  onRetryQueuedMessage: (message: ChatQueueMessage) => void;
+  onSkipQueuedMessage: (message: ChatQueueMessage) => void;
+  onInsertQueuedMessage: (message: ChatQueueMessage) => void;
+  /** Sends the typed text into the turn already in flight. */
+  onSubmitInsertNow: () => void;
   /** Set while the composer is replacing an already-sent message. */
   isEditingSentMessage: boolean;
   onCancelEditMessage: () => void;
@@ -82,8 +98,6 @@ type ChatComposerProps = {
   scheduledMessages: ScheduledMessage[];
   onScheduleMessage: (scheduledFor: Date) => void;
   onCancelScheduledMessage: (id: string) => void;
-  onEditQueuedDraft: () => void;
-  onDeleteQueuedDraft: () => void;
   attachedFiles: File[];
   onRemoveAttachment: (index: number) => void;
   fileErrors: Map<string, string>;
@@ -149,16 +163,25 @@ export default function ChatComposer({
   onClearInput,
   onSubmit,
   isDragActive,
-  queuedDraft,
-  backgroundSendPrompt,
-  onResolveBackgroundSendPrompt,
+  queueMessages,
+  queuePaused,
+  queuePauseReason,
+  queueCanInsert,
+  editingQueueMessage,
+  isSubmitting,
+  insertingMessageId,
+  onEditQueuedMessage,
+  onCancelQueuedEdit,
+  onDeleteQueuedMessage,
+  onRetryQueuedMessage,
+  onSkipQueuedMessage,
+  onInsertQueuedMessage,
+  onSubmitInsertNow,
   isEditingSentMessage,
   onCancelEditMessage,
   scheduledMessages,
   onScheduleMessage,
   onCancelScheduledMessage,
-  onEditQueuedDraft,
-  onDeleteQueuedDraft,
   attachedFiles,
   onRemoveAttachment,
   fileErrors,
@@ -256,22 +279,32 @@ export default function ChatComposer({
   const hasPendingPermissions = pendingPermissionRequests.length > 0;
   const hasActivityIndicator = Boolean(activity && !hasPendingPermissions);
 
-  const hasQueuedDraft = Boolean(queuedDraft);
-  const canQueueDraft = isLoading && Boolean(input.trim() || attachedFiles.length > 0);
-  const submitHint = canQueueDraft
-    ? hasQueuedDraft
-      ? t('input.hintText.updateQueued', { defaultValue: 'Enter to update queued message' })
-      : t('input.hintText.queue', { defaultValue: 'Enter to queue your next message' })
-    : sendByCtrlEnter
-      ? t('input.hintText.ctrlEnter')
-      : t('input.hintText.enter');
-  const submitAriaLabel = canQueueDraft
-    ? hasQueuedDraft
-      ? t('input.queue.update', { defaultValue: 'Update queued message' })
-      : t('input.queue.sendNext', { defaultValue: 'Queue next message' })
-    : isLoading
-      ? t('input.stop')
-      : t('input.send');
+  const isEditingQueuedMessage = Boolean(editingQueueMessage);
+  // A turn is running, or the server says a steered follow-up still has a live
+  // process to insert into. The latter stays true after the run registry has
+  // marked the original turn complete, which is exactly when the old UI went
+  // idle and the next click silently failed.
+  const sessionBusy = isLoading || queueCanInsert;
+  const hasComposerContent = Boolean(input.trim() || attachedFiles.length > 0);
+  // A message typed while the session is busy joins its server queue; while a
+  // queued message is being edited, submitting replaces that message instead.
+  const canQueueDraft = !isEditingQueuedMessage && sessionBusy && hasComposerContent;
+  const canInsertDraft = !isEditingQueuedMessage && sessionBusy && hasComposerContent;
+  const canSubmitEdit = isEditingQueuedMessage && hasComposerContent;
+  const submitHint = isEditingQueuedMessage
+    ? t('input.hintText.updateQueued', { defaultValue: 'Enter to update queued message' })
+    : canQueueDraft
+      ? t('input.hintText.queueOrInsert', { defaultValue: 'Enter to queue · ↗ to insert into the current turn' })
+      : sendByCtrlEnter
+        ? t('input.hintText.ctrlEnter')
+        : t('input.hintText.enter');
+  const submitAriaLabel = isEditingQueuedMessage
+    ? t('input.queue.update', { defaultValue: 'Update queued message' })
+    : canQueueDraft
+      ? t('input.queue.sendNext', { defaultValue: 'Queue next message' })
+      : isLoading
+        ? t('input.stop')
+        : t('input.send');
 
   return (
     <div className="chat-composer-shell relative flex-shrink-0 px-2 pb-2 pt-0 sm:px-4 sm:pb-4 md:px-4 md:pb-6">
@@ -314,20 +347,26 @@ export default function ChatComposer({
         </div>
       )}
 
-      <BackgroundSendDialog
-        prompt={backgroundSendPrompt}
-        onResolve={onResolveBackgroundSendPrompt}
-      />
-
-      {queuedDraft && (
-        <QueuedMessageCard
-          content={queuedDraft.content}
-          attachmentCount={
-            queuedDraft.uploadedAttachments?.length ?? queuedDraft.attachments.length
-          }
-          onEdit={onEditQueuedDraft}
-          onDelete={onDeleteQueuedDraft}
-        />
+      {queueMessages.length > 0 && (
+        <div className="mx-auto mb-2 max-w-[54.25rem] space-y-2">
+          {queueMessages.map((message) => (
+            <QueuedMessageCard
+              key={message.id}
+              message={message}
+              queuePaused={queuePaused}
+              pauseReason={queuePauseReason}
+              isEditing={editingQueueMessage?.id === message.id}
+              canInsertNow={sessionBusy}
+              inserting={insertingMessageId === message.id}
+              onEdit={() => onEditQueuedMessage(message)}
+              onCancelEdit={onCancelQueuedEdit}
+              onDelete={() => onDeleteQueuedMessage(message)}
+              onRetry={() => onRetryQueuedMessage(message)}
+              onSkip={() => onSkipQueuedMessage(message)}
+              onInsertNow={() => onInsertQueuedMessage(message)}
+            />
+          ))}
+        </div>
       )}
 
       {!hasQuestionPanel && <div className="relative mx-auto max-w-[54.25rem]">
@@ -505,30 +544,49 @@ export default function ChatComposer({
               providerLabel={providerLabel}
             />
 
+            {canInsertDraft && (
+              <PromptInputButton
+                tooltip={{
+                  content: t('input.queue.insertNow', { defaultValue: 'Insert into current turn' }),
+                }}
+                onClick={onSubmitInsertNow}
+                disabled={isSubmitting}
+                className="text-primary/80 hover:bg-primary/10 hover:text-primary"
+              >
+                {isSubmitting ? <Loader2 className="animate-spin" /> : <CornerUpRightIcon />}
+              </PromptInputButton>
+            )}
+
             <PromptInputSubmit
               onClick={
-                canQueueDraft
-                  ? (e: MouseEvent<HTMLButtonElement>) => {
-                      e.preventDefault();
-                      onSubmit(e);
-                    }
-                  : isLoading
-                    ? onAbortSession
-                    : isRecording
-                      ? (e: MouseEvent<HTMLButtonElement>) => {
-                          e.preventDefault();
-                          voiceStop({ send: true });
-                        }
-                      : undefined
+                isSubmitting
+                  ? (e: MouseEvent<HTMLButtonElement>) => e.preventDefault()
+                  : canQueueDraft || canSubmitEdit
+                    ? (e: MouseEvent<HTMLButtonElement>) => {
+                        e.preventDefault();
+                        onSubmit(e);
+                      }
+                    : isLoading
+                      ? onAbortSession
+                      : isRecording
+                        ? (e: MouseEvent<HTMLButtonElement>) => {
+                            e.preventDefault();
+                            voiceStop({ send: true });
+                          }
+                        : undefined
               }
               disabled={
-                isLoading
-                  ? false
-                  : isRecording
+                isSubmitting
+                  ? true
+                  : canSubmitEdit
                     ? false
-                    : isTranscribing
-                      ? true
-                      : !input.trim() && attachedFiles.length === 0
+                    : isLoading
+                      ? false
+                      : isRecording
+                        ? false
+                        : isTranscribing
+                          ? true
+                          : !input.trim() && attachedFiles.length === 0
               }
               aria-label={submitAriaLabel}
               title={submitAriaLabel}
@@ -536,7 +594,7 @@ export default function ChatComposer({
             >
               {isTranscribing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
-              ) : canQueueDraft ? (
+              ) : canQueueDraft || canSubmitEdit ? (
                 <ArrowUpIcon className="h-4 w-4" />
               ) : undefined}
             </PromptInputSubmit>

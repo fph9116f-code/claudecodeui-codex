@@ -257,6 +257,42 @@ export const api = {
     cancel: (id: string) => del(`/api/scheduled-messages/${encodeURIComponent(id)}`),
   },
 
+  // The server-owned queue for a busy session. Discrete operations (rather
+  // than a whole-record save) mean composer draft writes can never create,
+  // restore or clear a queued message.
+  chatQueue: {
+    list: (sessionId: string) =>
+      get(`/api/chat-queue/sessions/${encodeURIComponent(sessionId)}`),
+    append: (body: {
+      sessionId: string;
+      requestId: string;
+      content: string;
+      options?: unknown;
+      attachments?: unknown[];
+    }) => post('/api/chat-queue/messages', body),
+    edit: (id: string, body: {
+      version: number;
+      content: string;
+      options?: unknown;
+      attachments?: unknown[];
+    }) => patch(`/api/chat-queue/messages/${encodeURIComponent(id)}`, body),
+    remove: (id: string, version: number) =>
+      del(`/api/chat-queue/messages/${encodeURIComponent(id)}${query({ version })}`),
+    // Submit a message that should steer the running turn; the server falls
+    // back to queueing when the turn has already ended.
+    steer: (body: {
+      sessionId: string;
+      requestId: string;
+      content: string;
+      options?: unknown;
+      attachments?: unknown[];
+    }) => post('/api/chat-queue/messages/steer', body),
+    // Steer the turn already in flight instead of waiting for it to finish.
+    insert: (id: string) => post(`/api/chat-queue/messages/${encodeURIComponent(id)}/insert`),
+    retry: (id: string) => post(`/api/chat-queue/messages/${encodeURIComponent(id)}/retry`),
+    skip: (id: string) => post(`/api/chat-queue/messages/${encodeURIComponent(id)}/skip`),
+  },
+
   // Workspace file tree
   readFile: (projectId: string, filePath: string) =>
     get(`/api/file-tree/projects/${projectId}/file${query({ filePath })}`),
@@ -484,7 +520,8 @@ export const api = {
     savePreferences: (updates: Record<string, unknown>) =>
       patch('/api/user/preferences', updates),
     drafts: () => get('/api/user/drafts'),
-    saveDraft: (scope: string, draft: { text: string; queuedMessage?: unknown }) =>
+    // Drafts carry composer text only; queued messages have their own API.
+    saveDraft: (scope: string, draft: { text: string }) =>
       put('/api/user/drafts', { scope, ...draft }),
     deleteDraft: (scope: string) => del('/api/user/drafts', { scope }),
   },

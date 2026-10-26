@@ -103,9 +103,6 @@ function ChatInterface({
 
   const {
     provider,
-    setProvider,
-    providerModels,
-    setStoredProviderModel,
     currentProviderEffort,
     currentProviderEffortOptions,
     currentProviderModel,
@@ -214,11 +211,20 @@ function ChatInterface({
     isDragActive,
     openAttachmentPicker,
     handleSubmit,
-    backgroundSendPrompt,
-    resolveBackgroundSendPrompt,
-    queuedDraft,
-    editQueuedDraft,
-    deleteQueuedDraft,
+    submitInsertNow,
+    isSubmitting,
+    queueMessages,
+    queuePaused,
+    queuePauseReason,
+    queueCanInsert,
+    editingQueueMessage,
+    editQueuedMessage,
+    cancelQueuedEdit,
+    deleteQueuedMessage,
+    retryQueuedMessage,
+    skipQueuedMessage,
+    insertQueuedMessageNow,
+    insertingMessageId,
     handleVoiceTranscript,
     handleInputChange,
     handleKeyDown,
@@ -475,13 +481,6 @@ function ChatInterface({
               selectedSession={selectedSession}
               currentSessionId={currentSessionId}
               provider={provider}
-              setProvider={setProvider}
-              textareaRef={textareaRef}
-              providerModels={providerModels}
-              setProviderModel={setStoredProviderModel}
-              providerModelCatalog={providerModelCatalog}
-              providerModelActions={providerModelActions}
-              providerModelsLoading={providerModelsLoading}
               tasksEnabled={tasksEnabled}
               isTaskMasterInstalled={isTaskMasterInstalled}
               onShowAllTasks={onShowAllTasks}
@@ -564,11 +563,20 @@ function ChatInterface({
           onClearInput={handleClearInput}
           onSubmit={handleSubmit}
           isDragActive={isDragActive}
-          queuedDraft={queuedDraft}
-          backgroundSendPrompt={backgroundSendPrompt}
-          onResolveBackgroundSendPrompt={resolveBackgroundSendPrompt}
-          onEditQueuedDraft={editQueuedDraft}
-          onDeleteQueuedDraft={deleteQueuedDraft}
+          queueMessages={queueMessages}
+          queuePaused={queuePaused}
+          queuePauseReason={queuePauseReason}
+          queueCanInsert={queueCanInsert}
+          editingQueueMessage={editingQueueMessage}
+          isSubmitting={isSubmitting}
+          insertingMessageId={insertingMessageId}
+          onEditQueuedMessage={editQueuedMessage}
+          onCancelQueuedEdit={cancelQueuedEdit}
+          onDeleteQueuedMessage={deleteQueuedMessage}
+          onRetryQueuedMessage={retryQueuedMessage}
+          onSkipQueuedMessage={skipQueuedMessage}
+          onInsertQueuedMessage={insertQueuedMessageNow}
+          onSubmitInsertNow={submitInsertNow}
           attachedFiles={attachedFiles}
           onRemoveAttachment={(index) =>
             setAttachedFiles((previous) =>
