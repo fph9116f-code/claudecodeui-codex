@@ -1,6 +1,6 @@
-import { scheduledMessagesDb, sessionDraftsDb } from '@/modules/database/index.js';
-import type { QueuedSessionMessageRecord, ScheduledMessageRow } from '@/modules/database/index.js';
-import { chatRunRegistry, runDetachedChatTurn } from '@/modules/websocket/index.js';
+import { scheduledMessagesDb } from '@/modules/database/index.js';
+import type { ScheduledMessageRow } from '@/modules/database/index.js';
+import { runDetachedChatTurn } from '@/modules/websocket/index.js';
 import type { ProviderRuntimeGateway } from '@/modules/websocket/index.js';
 
 /**
@@ -15,12 +15,6 @@ const POLL_INTERVAL_MS = 30_000;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let dispatchInFlight = false;
 
-type StoredQueuedMessage = {
-  content: string;
-  options: Record<string, unknown>;
-  attachments: unknown[];
-};
-
 function readOptions(raw: string): Record<string, unknown> {
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -30,87 +24,6 @@ function readOptions(raw: string): Record<string, unknown> {
   } catch {
     return {};
   }
-}
-
-function readQueuedMessage(value: unknown): StoredQueuedMessage | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null;
-  }
-  const record = value as Record<string, unknown>;
-  const content = typeof record.content === 'string' ? record.content : '';
-  const attachments = Array.isArray(record.attachments)
-    ? record.attachments
-    : Array.isArray(record.images)
-      ? record.images
-      : [];
-  if (!content.trim() && attachments.length === 0) {
-    return null;
-  }
-  const options = record.options && typeof record.options === 'object' && !Array.isArray(record.options)
-    ? record.options as Record<string, unknown>
-    : {};
-  return { content, options, attachments };
-}
-
-async function sendClaimedQueuedMessage(
-  candidate: QueuedSessionMessageRecord,
-  runtime: ProviderRuntimeGateway,
-): Promise<void> {
-  const message = readQueuedMessage(candidate.queuedMessage);
-  if (!message) {
-    sessionDraftsDb.deleteEmptyDraft(candidate.userId, candidate.sessionId);
-    return;
-  }
-
-  const result = await runDetachedChatTurn(
-    {
-      sessionId: candidate.sessionId,
-      userId: candidate.userId,
-      content: message.content,
-      options: { ...message.options, attachments: message.attachments },
-    },
-    { runtime },
-  );
-
-  // The registry check and run reservation are separate operations. If a run
-  // wins that tiny race, put the turn back so the next poll tries again.
-  if (!result.started && result.error === 'A run was already in progress for this session.') {
-    sessionDraftsDb.restoreQueuedMessage(candidate);
-    return;
-  }
-  sessionDraftsDb.deleteEmptyDraft(candidate.userId, candidate.sessionId);
-}
-
-/**
- * Whether a queued turn has to keep waiting for the session.
- *
- * A turn that ends with background work still going (a backgrounded command,
- * agent or workflow) is marked completed, but its CLI process stays open so
- * that work can report back. A new turn replaces that process and stops the
- * work, which is why the composer asks before an interactive send. A queued
- * turn was promised to go "when this finishes", so it waits for that work too.
- */
-function isSessionBusy(sessionId: string, runtime: ProviderRuntimeGateway): boolean {
-  return chatRunRegistry.isProcessing(sessionId) || runtime.hasBackgroundWork(sessionId);
-}
-
-/** Sends every persisted queued turn whose session is currently idle. */
-export async function dispatchQueuedMessages(runtime: ProviderRuntimeGateway): Promise<number> {
-  const candidates = sessionDraftsDb.listQueuedMessages();
-  let claimed = 0;
-
-  await Promise.all(candidates.map(async (candidate) => {
-    if (isSessionBusy(candidate.sessionId, runtime)) {
-      return;
-    }
-    if (!sessionDraftsDb.claimQueuedMessage(candidate)) {
-      return;
-    }
-    claimed += 1;
-    await sendClaimedQueuedMessage(candidate, runtime);
-  }));
-
-  return claimed;
 }
 
 async function sendClaimedMessage(
@@ -133,11 +46,16 @@ async function sendClaimedMessage(
     );
 
     // Recorded rather than retried, and recorded whether the run never started
-    // (deleted session, unavailable provider) or started and then failed.
-    // Silently dropping a message the user scheduled is worse than telling
-    // them it did not go.
-    if (!result.started || result.error) {
-      scheduledMessagesDb.markFailed(row.id, result.error ?? 'The session was unavailable when this was due.');
+    // (deleted session, unavailable provider), started and then failed, or was
+    // interrupted by the user. Silently dropping a message the user scheduled
+    // is worse than telling them it did not go.
+    if (!result.started || result.error || result.aborted) {
+      scheduledMessagesDb.markFailed(
+        row.id,
+        result.error ?? (result.aborted
+          ? 'The scheduled run was interrupted before it finished.'
+          : 'The session was unavailable when this was due.')
+      );
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -148,7 +66,9 @@ async function sendClaimedMessage(
 /**
  * Sends every message whose time has come.
  *
- * Exported so a test can drive one pass without waiting on the timer.
+ * Exported so a test can drive one pass without waiting on the timer. Queued
+ * chat messages are a separate dispatcher (the Chat Queue module): this pass
+ * must not wait on them, and they must not wait on it.
  */
 export async function dispatchDueScheduledMessages(
   runtime: ProviderRuntimeGateway,
@@ -190,7 +110,6 @@ export function initializeScheduledMessageDispatcher(runtime: ProviderRuntimeGat
     }
     dispatchInFlight = true;
     void dispatchDueScheduledMessages(runtime)
-      .then(() => dispatchQueuedMessages(runtime))
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
         console.error('[ScheduledMessages] Dispatch pass failed', { error: message });

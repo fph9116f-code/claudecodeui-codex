@@ -1,6 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { open, readFile } from 'node:fs/promises';
 
 import { sessionsDb } from '@/modules/database/index.js';
 import {
@@ -17,6 +17,11 @@ type ParsedSession = {
   projectPath: string;
   sessionName?: string;
 };
+
+/** 尾部读取块大小：一条普通 transcript 行远小于该值，通常一次即可命中。 */
+const ACTIVITY_TAIL_CHUNK_BYTES = 64 * 1024;
+/** 尾部读取上限：避免超长 tool result 单行导致无限回溯。 */
+const ACTIVITY_TAIL_MAX_BYTES = 1024 * 1024;
 
 /**
  * Session indexer for Claude transcript artifacts.
@@ -65,13 +70,18 @@ export class ClaudeSessionSynchronizer implements IProviderSessionSynchronizer {
       }
 
       const timestamps = await readFileTimestamps(filePath);
+      // 侧边栏的“最近活跃”和归档自动恢复都使用 updated_at，因此它必须来自
+      // 最后一条真实对话事件，而不是文件 mtime。Claude Code 会在空闲时原地
+      // 重写 mode / permission-mode / atis-latch 等元数据行，mtime 变化并不
+      // 代表产生了新消息。只有解析不到任何对话事件时才回退到 mtime。
+      const lastActivityAt = await this.extractLastActivityTimestamp(filePath);
       sessionsDb.createSession(
         parsed.sessionId,
         this.provider,
         parsed.projectPath,
         parsed.sessionName,
         timestamps.createdAt,
-        timestamps.updatedAt,
+        lastActivityAt ?? timestamps.updatedAt,
         filePath
       );
       processed += 1;
@@ -98,15 +108,98 @@ export class ClaudeSessionSynchronizer implements IProviderSessionSynchronizer {
     }
 
     const timestamps = await readFileTimestamps(filePath);
+    const lastActivityAt = await this.extractLastActivityTimestamp(filePath);
     return sessionsDb.createSession(
       parsed.sessionId,
       this.provider,
       parsed.projectPath,
       parsed.sessionName,
       timestamps.createdAt,
-      timestamps.updatedAt,
+      lastActivityAt ?? timestamps.updatedAt,
       filePath
     );
+  }
+
+  /**
+   * 从 transcript 尾部倒序读取最后一条真实对话事件的时间戳。
+   *
+   * Claude Code 会往会话文件里混写 mode / permission-mode / atis-latch /
+   * api-request* / file-history-* 等元数据行，这些行没有 timestamp，且可能在
+   * 没有任何新消息时被原地重写。若用文件 mtime 当作会话活跃时间，就会把这种
+   * 维护性写入误判成“会话刚刚活跃”，既点亮侧边栏绿点，也会解除会话归档。
+   *
+   * 只认可带 timestamp 的 user / assistant 事件；子代理（isSidechain）事件不
+   * 属于当前对话主线，跳过。找不到时返回 undefined，由调用方回退到 mtime。
+   */
+  private async extractLastActivityTimestamp(filePath: string): Promise<string | undefined> {
+    let handle: Awaited<ReturnType<typeof open>> | undefined;
+
+    try {
+      handle = await open(filePath, 'r');
+      const { size } = await handle.stat();
+      let cursor = size;
+      let consumedBytes = 0;
+      // 本轮读取块的首行可能是被截断的半行，留到下一轮拼接到前面。
+      let partialFirstLine = '';
+
+      while (cursor > 0 && consumedBytes < ACTIVITY_TAIL_MAX_BYTES) {
+        const length = Math.min(ACTIVITY_TAIL_CHUNK_BYTES, cursor);
+        const start = cursor - length;
+        const buffer = Buffer.alloc(length);
+        const { bytesRead } = await handle.read(buffer, 0, length, start);
+
+        const text = buffer.subarray(0, bytesRead).toString('utf8') + partialFirstLine;
+        const lines = text.split('\n');
+        // 文件头部的那一行是完整的；其余情况第 0 行是半行，不能解析。
+        const firstCompleteIndex = start === 0 ? 0 : 1;
+
+        for (let index = lines.length - 1; index >= firstCompleteIndex; index -= 1) {
+          const timestamp = this.readActivityTimestampFromLine(lines[index]);
+          if (timestamp) {
+            return timestamp;
+          }
+        }
+
+        partialFirstLine = start === 0 ? '' : lines[0] ?? '';
+        // 单行已经超过上限，继续向前读也无法补全。
+        if (partialFirstLine.length > ACTIVITY_TAIL_MAX_BYTES) {
+          return undefined;
+        }
+
+        consumedBytes += bytesRead;
+        cursor = start;
+      }
+    } catch {
+      // 读取失败交给调用方回退到 mtime，不能因此中断会话索引。
+    } finally {
+      await handle?.close().catch(() => undefined);
+    }
+
+    return undefined;
+  }
+
+  /** 解析一行 transcript，返回其中真实对话事件的时间戳。 */
+  private readActivityTimestampFromLine(line: string): string | undefined {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+
+    let entry: Record<string, unknown>;
+    try {
+      entry = JSON.parse(trimmed) as Record<string, unknown>;
+    } catch {
+      return undefined;
+    }
+
+    if (entry.isSidechain === true) {
+      return undefined;
+    }
+    if (entry.type !== 'user' && entry.type !== 'assistant') {
+      return undefined;
+    }
+
+    return typeof entry.timestamp === 'string' && entry.timestamp ? entry.timestamp : undefined;
   }
 
   /**

@@ -127,13 +127,17 @@ export const sessionsDb = {
       .get(providerSessionId, provider) as { session_id: string } | undefined;
 
     if (existing) {
+      // updatedAt 由同步器按“最后一条真实对话事件”计算，可能比当前库里的值更旧
+      // （例如之前被文件 mtime 误抬高），因此允许回退到真实时间。
+      // 只有拿到明确且更新的时间戳才解除归档；时间戳缺失时保持归档状态，
+      // 避免文件监听/stat 失败把用户刚归档的会话重新放出来。
       db.prepare(
         `UPDATE sessions SET
            provider = ?,
-           updated_at = COALESCE(?, CURRENT_TIMESTAMP),
+           updated_at = COALESCE(?, updated_at),
            project_path = ?,
            jsonl_path = ?,
-           isArchived = CASE WHEN ? IS NULL OR julianday(?) > julianday(updated_at) THEN 0 ELSE isArchived END,
+           isArchived = CASE WHEN ? IS NOT NULL AND julianday(?) > julianday(updated_at) THEN 0 ELSE isArchived END,
            custom_name = CASE
              WHEN session_id <> provider_session_id AND custom_name IS NOT NULL THEN custom_name
              ELSE COALESCE(?, custom_name)
@@ -162,10 +166,10 @@ export const sessionsDb = {
        ON CONFLICT(session_id) DO UPDATE SET
          provider = excluded.provider,
          provider_session_id = excluded.provider_session_id,
-         updated_at = excluded.updated_at,
+         updated_at = COALESCE(?, sessions.updated_at),
          project_path = excluded.project_path,
          jsonl_path = excluded.jsonl_path,
-         isArchived = CASE WHEN ? IS NULL OR julianday(excluded.updated_at) > julianday(sessions.updated_at) THEN 0 ELSE sessions.isArchived END,
+         isArchived = CASE WHEN ? IS NOT NULL AND julianday(?) > julianday(sessions.updated_at) THEN 0 ELSE sessions.isArchived END,
          custom_name = CASE
            WHEN sessions.session_id <> sessions.provider_session_id AND sessions.custom_name IS NOT NULL
              THEN sessions.custom_name
@@ -179,6 +183,8 @@ export const sessionsDb = {
       normalizedProjectPath,
       jsonlPath ?? null,
       createdAtValue,
+      updatedAtValue,
+      updatedAtValue,
       updatedAtValue,
       updatedAtValue
     );

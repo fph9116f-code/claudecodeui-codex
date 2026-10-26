@@ -13,6 +13,8 @@ type SessionSummary = {
   summary: string;
   messageCount: number;
   lastActivity: string;
+  /** ISO creation time, shown by the workspace header so sessions with the same title stay distinguishable. */
+  createdAt: string;
 };
 
 type SessionRepositoryRow = {
@@ -124,6 +126,7 @@ function mapSessionRowToSummary(row: SessionRepositoryRow): SessionSummary {
     summary: row.custom_name || '',
     messageCount: 0,
     lastActivity: row.updated_at ?? row.created_at ?? new Date().toISOString(),
+    createdAt: row.created_at ?? '',
   };
 }
 

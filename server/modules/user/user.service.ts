@@ -5,11 +5,10 @@ type GitConfig = {
   git_email: string | null;
 };
 
-/** One chat scope's unsent composer text and queued message. */
+/** One chat scope's unsent composer text. */
 type DraftRecord = {
   scope: string;
   text: string;
-  queuedMessage: unknown | null;
   updatedAt: string;
 };
 
@@ -26,7 +25,7 @@ type UserDependencies = {
   };
   drafts: {
     getDrafts(userId: number): DraftRecord[];
-    saveDraft(userId: number, scope: string, draft: { text: string; queuedMessage: unknown | null }): void;
+    saveDraft(userId: number, scope: string, draft: { text: string }): void;
     deleteDraft(userId: number, scope: string): void;
   };
   readSystemGitConfig(): Promise<GitConfig>;
@@ -165,7 +164,7 @@ export function createUserService(dependencies: UserDependencies) {
 
     saveDraft(userId: number, scopeInput: unknown, body: unknown) {
       const scope = readDraftScope(scopeInput);
-      const payload = (body ?? {}) as { text?: unknown; queuedMessage?: unknown };
+      const payload = (body ?? {}) as { text?: unknown };
       const text = typeof payload.text === 'string' ? payload.text : '';
 
       if (text.length > MAX_DRAFT_TEXT_LENGTH) {
@@ -175,10 +174,10 @@ export function createUserService(dependencies: UserDependencies) {
         });
       }
 
-      dependencies.drafts.saveDraft(userId, scope, {
-        text,
-        queuedMessage: payload.queuedMessage ?? null,
-      });
+      // Queued messages are their own entity now. A stale client that still
+      // sends `queuedMessage` is ignored rather than allowed to resurrect or
+      // clear a message the server already owns.
+      dependencies.drafts.saveDraft(userId, scope, { text });
       return { success: true };
     },
 
