@@ -19,6 +19,8 @@ type StandaloneShellProps = {
   showHeader?: boolean;
   compact?: boolean;
   minimal?: boolean;
+  /** 递增时请求终端强制重启；project-workspace 用它在“新建会话”时刷新终端。 */
+  restartToken?: number;
 };
 
 /** This module's only public export: used by the project-workspace module for its shell tab and by provider-auth to run an interactive login command. */
@@ -36,6 +38,7 @@ export default function StandaloneShell({
   showHeader = true,
   compact = false,
   minimal = false,
+  restartToken,
 }: StandaloneShellProps) {
   const [isCompleted, setIsCompleted] = useState(false);
 
@@ -72,6 +75,7 @@ export default function StandaloneShell({
           onProcessComplete={handleProcessComplete}
           minimal={minimal}
           autoConnect={minimal ? true : autoConnect}
+          restartToken={restartToken}
         />
       </div>
     </div>

@@ -1069,6 +1069,8 @@ export function useProjectsState({
     (project: Project) => {
       setSelectedProject(project);
       setSelectedSession(null);
+      // 新建会话默认落在终端标签；若用户已经停在终端，由 newSessionTrigger
+      // 驱动终端重启，避免点击后没有任何可见反馈。
       setActiveTab('shell');
       setNewSessionTrigger((previous) => previous + 1);
       navigate('/');

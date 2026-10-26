@@ -197,6 +197,7 @@ function WorkspaceMain({
                 session={selectedSession}
                 showHeader={false}
                 isActive={activeTab === 'shell'}
+                restartToken={newSessionTrigger}
               />
             </div>
           )}

@@ -34,6 +34,8 @@ type ShellProps = {
   minimal?: boolean;
   autoConnect?: boolean;
   isActive?: boolean;
+  /** 递增时请求强制重启终端；project-workspace 用它在“新建会话”时刷新终端。 */
+  restartToken?: number;
 };
 
 /** Exported through the shell barrel: the standalone-shell module renders it as a full-page terminal and the task-master module embeds it in its setup modal to run TaskMaster's init command. */
@@ -46,6 +48,7 @@ export default function Shell({
   minimal = false,
   autoConnect = false,
   isActive = true,
+  restartToken,
 }: ShellProps) {
   const { t } = useTranslation('chat');
   const [isRestarting, setIsRestarting] = useState(false);
@@ -59,6 +62,8 @@ export default function Shell({
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restartAfterInitRef = useRef(false);
   const onOutputRef = useRef<(() => void) | null>(null);
+  // 记录已处理的 restartToken，首次挂载时终端本来就会连接，不需要额外重启。
+  const lastRestartTokenRef = useRef(restartToken ?? 0);
 
   const {
     terminalContainerRef,
@@ -252,6 +257,16 @@ export default function Shell({
     restartAfterInitRef.current = false;
     connectToShell({ forceRestart: true });
   }, [connectToShell, isConnected, isConnecting, isInitialized, isRestarting]);
+
+  useEffect(() => {
+    const token = restartToken ?? 0;
+    if (token === lastRestartTokenRef.current) {
+      return;
+    }
+    lastRestartTokenRef.current = token;
+    // 新建会话时用户可能已经停在终端标签，这里强制重启终端，避免点击没有反馈。
+    handleRestartShell();
+  }, [handleRestartShell, restartToken]);
 
   if (!selectedProject) {
     return (
