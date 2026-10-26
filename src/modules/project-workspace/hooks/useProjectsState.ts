@@ -9,6 +9,7 @@ import type { ServerEvent,
   Project,
   ProjectSession,IsSessionProcessing } from '@/shared/types';
 import { mergeProjectSelectionMetadata } from '@/modules/project-workspace/utils/projectSelectionMetadata';
+import { useAttentionTabBadge } from '@/modules/project-workspace/hooks/useAttentionTabBadge';
 import { readSelectedProvider } from '@/shared/selectedProvider';
 
 type UseProjectsStateArgs = {
@@ -376,7 +377,8 @@ const readPersistedTab = (): AppTab => {
   } catch {
     // localStorage unavailable
   }
-  return 'chat';
+  // 新会话默认进入终端模式，而不是聊天模式。
+  return 'shell';
 };
 
 export function useProjectsState({
@@ -391,6 +393,10 @@ export function useProjectsState({
   const [selectedSession, setSelectedSession] = useState<ProjectSession | null>(null);
   const [attentionSessionIds, setAttentionSessionIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<AppTab>(readPersistedTab);
+
+  // 浏览器标签页气泡数字 = 产生了更新但用户还没点开的会话数，与侧边栏的
+  // 琥珀色呼吸点同源；点开会话后 attentionSessionIds 会移除该项，数字自动减小。
+  useAttentionTabBadge(attentionSessionIds.size);
 
   useEffect(() => {
     try {
@@ -411,7 +417,7 @@ export function useProjectsState({
    * New Session actions.
    *
    * It exists because `handleNewSession` can be invoked while the app is already in
-   * the same visible state (`selectedSession === null`, `activeTab === 'chat'`,
+   * the same visible state (`selectedSession === null`, `activeTab === 'shell'`,
    * route already `/`). In that case, React/router updates are idempotent and no
    * downstream reset logic runs.
    *
@@ -1063,7 +1069,7 @@ export function useProjectsState({
     (project: Project) => {
       setSelectedProject(project);
       setSelectedSession(null);
-      setActiveTab('chat');
+      setActiveTab('shell');
       setNewSessionTrigger((previous) => previous + 1);
       navigate('/');
 

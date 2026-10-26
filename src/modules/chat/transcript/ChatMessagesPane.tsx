@@ -6,15 +6,13 @@ import type { BackgroundTaskSummary,
   ChatMessage,
   Project,
   ProjectSession,
-  LLMProvider,
-  ProviderModelActions,
-  ProviderModelsDefinition } from '@/shared/types';
+  LLMProvider } from '@/shared/types';
 import { getIntrinsicMessageKey } from '@/modules/chat/utils/messageKeys';
 import { groupConsecutiveTools, isToolGroupItem } from '@/modules/chat/utils/toolGrouping';
 import { useLazyRowObserver } from '@/modules/chat/hooks/useLazyRowObserver';
 import LazyMessageRow from '@/modules/chat/transcript/LazyMessageRow';
 import MessageComponent from '@/modules/chat/transcript/MessageComponent';
-import ProviderSelectionEmptyState from '@/modules/chat/transcript/ProviderSelectionEmptyState';
+import ChatEmptyState from '@/modules/chat/transcript/ChatEmptyState';
 import ToolGroupContainer from '@/modules/chat/transcript/ToolGroupContainer';
 import LoadAllMessagesOverlay from '@/modules/chat/transcript/LoadAllMessagesOverlay';
 import ChatExportMenu from '@/modules/chat/transcript/ChatExportMenu';
@@ -40,13 +38,6 @@ type ChatMessagesPaneProps = {
   selectedSession: ProjectSession | null;
   currentSessionId: string | null;
   provider: LLMProvider;
-  setProvider: (provider: LLMProvider) => void;
-  textareaRef: RefObject<HTMLTextAreaElement>;
-  providerModels: Record<LLMProvider, string>;
-  setProviderModel: (provider: LLMProvider, model: string) => void;
-  providerModelCatalog: Partial<Record<LLMProvider, ProviderModelsDefinition>>;
-  providerModelActions: ProviderModelActions;
-  providerModelsLoading: boolean;
   tasksEnabled: boolean;
   isTaskMasterInstalled: boolean | null;
   onShowAllTasks?: (() => void) | null;
@@ -95,8 +86,8 @@ const getGroupedMessageKey = (message: ChatMessage): string =>
 
 /**
  * Rendered by chat's ChatInterface as the scrolling transcript: the message
- * list and tool groups, the export menu, the provider empty state and the
- * load-all-history overlay.
+ * list and tool groups, the export menu, the empty state and the load-all
+ * history overlay.
  */
 function ChatMessagesPane({
   scrollContainerRef,
@@ -109,13 +100,6 @@ function ChatMessagesPane({
   selectedSession,
   currentSessionId,
   provider,
-  setProvider,
-  textareaRef,
-  providerModels,
-  setProviderModel,
-  providerModelCatalog,
-  providerModelActions,
-  providerModelsLoading,
   tasksEnabled,
   isTaskMasterInstalled,
   onShowAllTasks,
@@ -185,6 +169,10 @@ function ChatMessagesPane({
     [messageKeyMap],
   );
 
+  // With no transcript to show, the empty state fills the pane and centers its
+  // project card; a message list keeps the normal top-aligned flow.
+  const showsEmptyState = chatMessages.length === 0 && !isLoadingSessionMessages && !isProcessing;
+
   return (
     <div
       ref={scrollContainerRef}
@@ -219,7 +207,11 @@ function ChatMessagesPane({
           </div>
         </div>
       )}
-      <div className="mx-auto w-full max-w-[54.25rem] space-y-3 px-4 sm:space-y-4">
+      <div
+        className={`mx-auto w-full max-w-[54.25rem] space-y-3 px-4 sm:space-y-4 ${
+          showsEmptyState ? 'flex min-h-full items-center justify-center' : ''
+        }`}
+      >
       {(isLoadingSessionMessages || isProcessing) && chatMessages.length === 0 ? (
         <div className="mt-8 text-center text-gray-500 dark:text-gray-400">
           <div className="flex items-center justify-center space-x-2">
@@ -228,17 +220,9 @@ function ChatMessagesPane({
           </div>
         </div>
       ) : chatMessages.length === 0 ? (
-        <ProviderSelectionEmptyState
+        <ChatEmptyState
+          selectedProject={selectedProject}
           selectedSession={selectedSession}
-          currentSessionId={currentSessionId}
-          provider={provider}
-          setProvider={setProvider}
-          textareaRef={textareaRef}
-          providerModels={providerModels}
-          setProviderModel={setProviderModel}
-          providerModelCatalog={providerModelCatalog}
-          providerModelActions={providerModelActions}
-          providerModelsLoading={providerModelsLoading}
           tasksEnabled={tasksEnabled}
           isTaskMasterInstalled={isTaskMasterInstalled}
           onShowAllTasks={onShowAllTasks}

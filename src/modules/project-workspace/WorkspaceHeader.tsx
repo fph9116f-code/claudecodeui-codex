@@ -18,6 +18,8 @@ type WorkspaceHeaderProps = {
   shouldShowBrowserTab: boolean;
   isMobile: boolean;
   onMenuClick: () => void;
+  /** Increments whenever the user starts a new session, so the title's draft timestamp can reset. */
+  newSessionTrigger: number;
   /** Persists a new title for a session; resolves false when the backend refuses it. */
   onRenameSession: (sessionId: string, summary: string) => Promise<boolean>;
 };
@@ -32,6 +34,7 @@ export default function WorkspaceHeader({
   shouldShowBrowserTab,
   isMobile,
   onMenuClick,
+  newSessionTrigger,
   onRenameSession,
 }: WorkspaceHeaderProps) {
   const { t } = useTranslation();
@@ -105,6 +108,7 @@ export default function WorkspaceHeader({
             selectedProject={selectedProject}
             selectedSession={selectedSession}
             shouldShowTasksTab={shouldShowTasksTab}
+            newSessionTrigger={newSessionTrigger}
             onRenameSession={onRenameSession}
           />
           <WorkspaceConnectionStatus />

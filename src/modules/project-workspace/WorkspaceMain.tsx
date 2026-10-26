@@ -152,6 +152,7 @@ function WorkspaceMain({
         shouldShowBrowserTab={shouldShowBrowserTab}
         isMobile={isMobile}
         onMenuClick={onMenuClick}
+        newSessionTrigger={newSessionTrigger}
         onRenameSession={onRenameSession}
       />
 
