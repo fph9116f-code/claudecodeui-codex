@@ -174,9 +174,14 @@
     },
     "theme": {
       "label": "Theme",
-      "description": "Choose a light or dark appearance, or follow your operating system",
+      "description": "Choose the interface layout and visual style",
       "light": "Light",
       "dark": "Dark",
+      "appearance": "Interface theme",
+      "default": "Default",
+      "colorMode": "Color mode",
+      "colorDescription": "Choose light, dark, or follow your system",
+      "codex": "Codex",
       "system": "Follow the system appearance"
     },
     "projectSorting": {

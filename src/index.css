@@ -117,6 +117,94 @@
     --nav-input-bg: 0 0% 17% / 0.5;
     --nav-input-focus-ring: 217.2 91.2% 59.8% / 0.25;
   }
+
+  /*
+   * Codex appearance — Settings → Appearance → Theme → Codex.
+   *
+   * Codex 布局与深浅色独立；.dark 由颜色偏好决定。
+   * 以中性底色、轻边框和蓝色操作按钮统一各个工作区。
+   */
+  .codex {
+    --background: 0 0% 100%;
+    --foreground: 60 3.4% 11.4%;
+    --card: 0 0% 100%;
+    --card-foreground: 60 3.4% 11.4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 60 3.4% 11.4%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 18.7% 93.7%;
+    --secondary-foreground: 60 4% 17%;
+    --muted: 40 18.7% 93.7%;
+    --muted-foreground: 45 3.3% 47.1%;
+    --accent: 42.9 17.9% 92.4%;
+    --accent-foreground: 60 4% 17%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 42.9 13.2% 89.6%;
+    --input: 42.9 13.2% 89.6%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.75rem;
+
+    /* Nav design tokens — Codex light */
+    --nav-glass-bg: 40 27.3% 97.8% / 0.72;
+    --nav-glass-blur: 18px;
+    --nav-glass-saturate: 1.5;
+    --nav-tab-glow: 221.2 83.2% 53.3% / 0.16;
+    --nav-tab-ring: 221.2 83.2% 53.3% / 0.08;
+    --nav-float-shadow: 45 25% 12% / 0.06;
+    --nav-float-ring: 42.9 13.2% 89.6% / 0.6;
+    --nav-divider-color: 42.9 13.2% 89.6% / 0.6;
+    --nav-input-bg: 42.9 17.9% 92.4% / 0.6;
+    --nav-input-focus-ring: 221.2 83.2% 53.3% / 0.2;
+
+    /* Codex-only surfaces, consumed by the component rules at the end of this file. */
+    --codex-frame-bg: 240 5% 96%;
+    --codex-sidebar-bg: 240 10% 98%;
+    --codex-composer-bg: 0 0% 100%;
+    --codex-composer-border: 42.9 13.2% 88%;
+    --codex-composer-shadow: 45 25% 12% / 0.08;
+  }
+
+  .dark.codex {
+    --background: 60 4% 9.8%;
+    --foreground: 50 13.6% 91.4%;
+    --card: 60 3% 12.9%;
+    --card-foreground: 50 13.6% 91.4%;
+    --popover: 60 3% 12.9%;
+    --popover-foreground: 50 13.6% 91.4%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 60 3.7% 15.9%;
+    --secondary-foreground: 50 13.6% 91.4%;
+    --muted: 60 3.7% 15.9%;
+    --muted-foreground: 46.7 4.5% 61%;
+    --accent: 60 3.7% 15.9%;
+    --accent-foreground: 50 13.6% 91.4%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 60 3.2% 18.2%;
+    --input: 60 5.1% 19.4%;
+    --ring: 217.2 91.2% 59.8%;
+
+    /* Nav design tokens — Codex dark */
+    --nav-glass-bg: 60 4% 9.8% / 0.7;
+    --nav-glass-blur: 20px;
+    --nav-glass-saturate: 1.5;
+    --nav-tab-glow: 217.2 91.2% 59.8% / 0.25;
+    --nav-tab-ring: 217.2 91.2% 59.8% / 0.15;
+    --nav-float-shadow: 0 0% 0% / 0.4;
+    --nav-float-ring: 60 3.2% 18.2% / 0.4;
+    --nav-divider-color: 60 3.2% 18.2% / 0.6;
+    --nav-input-bg: 60 3.7% 15.9% / 0.6;
+    --nav-input-focus-ring: 217.2 91.2% 59.8% / 0.25;
+
+    --codex-frame-bg: 0 0% 8%;
+    --codex-sidebar-bg: 0 0% 11%;
+    --codex-composer-bg: 60 3% 12.9%;
+    --codex-composer-border: 60 3.2% 19%;
+    --codex-composer-shadow: 0 0% 0% / 0.45;
+  }
 }
 
 @layer base {
@@ -1013,4 +1101,183 @@
       background-color: transparent;
     }
   }
+}
+
+/* Codex 外观仅作用于标记的组件区域，默认主题继续使用原有布局。 */
+.codex body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+.codex [data-theme-surface="workspace"] {
+  padding: 12px 12px 12px 0;
+  background: hsl(var(--codex-frame-bg));
+}
+
+.codex [data-theme-surface="sidebar-region"] { border: 0; }
+
+.codex [data-theme-surface="sidebar"] {
+  background: hsl(var(--codex-sidebar-bg));
+  border: 1px solid hsl(var(--border) / 0.65);
+  border-radius: 16px 0 0 16px;
+  backdrop-filter: none;
+}
+
+.codex [data-theme-surface="workspace-main"] {
+  overflow: hidden;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border) / 0.65);
+  border-left: 0;
+  border-radius: 0 16px 16px 0;
+}
+
+.codex [data-theme-surface="workspace"]:not(:has([data-theme-surface="sidebar"])) [data-theme-surface="workspace-main"] {
+  border-left: 1px solid hsl(var(--border) / 0.65);
+  border-radius: 16px;
+}
+
+.codex-navigation-rail {
+  display: flex;
+  width: 56px;
+  flex: 0 0 56px;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 6px 10px;
+}
+
+.codex-rail-button {
+  position: relative;
+  display: flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  color: hsl(var(--muted-foreground));
+  transition: background-color 150ms, color 150ms;
+}
+
+.codex-rail-button:hover,
+.codex-rail-button.is-active {
+  background: hsl(var(--foreground) / 0.07);
+  color: hsl(var(--foreground));
+}
+
+.codex-rail-button:focus-visible,
+.codex-new-chat:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.codex-sidebar-header { flex-shrink: 0; padding: 16px 14px 8px; }
+.codex-sidebar-header h1 { font-size: 13px; letter-spacing: -0.02em; }
+.codex-new-chat {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 9px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: start;
+}
+.codex-new-chat:hover { background: hsl(var(--accent)); }
+.codex-project-groups { display: flex; flex-direction: column; gap: 22px; padding-bottom: 12px; }
+.codex-section-label { padding: 2px 10px 8px; color: hsl(var(--muted-foreground)); font-size: 11px; font-weight: 500; }
+.codex [data-theme-surface="project-item"] > .sticky { position: static; }
+.codex [data-theme-surface="project-item"] > .sticky > button {
+  min-height: 36px;
+  border-radius: 9px;
+  background: transparent;
+  padding: 7px 9px;
+}
+.codex [data-theme-surface="project-item"][data-selected] > .sticky > button,
+.codex [data-theme-surface="project-item"] > .sticky > button:hover { background: hsl(var(--foreground) / 0.055); }
+.codex [data-theme-surface="project-sessions"] { margin-left: 16px; padding-left: 8px; border-color: transparent; }
+.codex [data-theme-surface="project-sessions"] > button:first-child {
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  box-shadow: none;
+}
+.codex [data-theme-surface="project-sessions"] > button:first-child:hover { background: hsl(var(--accent)); color: hsl(var(--foreground)); }
+.codex [data-theme-surface="sidebar-footer"] { border-top: 1px solid hsl(var(--border) / 0.45); }
+.codex [data-theme-surface="sidebar-footer"] .nav-divider { display: none; }
+.codex [data-theme-surface="sidebar-footer"] a,
+.codex [data-theme-surface="sidebar-footer"] button { font-size: 12px; }
+
+.codex [data-theme-surface="workspace-header"] {
+  min-height: 52px;
+  border-bottom-color: transparent;
+  background: hsl(var(--background));
+  padding: 10px 22px;
+  backdrop-filter: none;
+}
+.codex [data-theme-surface="title-context"] { display: none; }
+.codex [data-theme-surface="workspace-tabs"] { border: 0; background: transparent; box-shadow: none; gap: 2px; }
+.codex [data-theme-surface="workspace-tabs"] [role="tab"] { box-shadow: none; border-radius: 7px; color: hsl(var(--muted-foreground)); }
+.codex [data-theme-surface="workspace-tabs"] [aria-selected="true"] { background: hsl(var(--muted) / 0.7); color: hsl(var(--foreground)); }
+
+.codex [data-theme-surface="chat-welcome"] { padding-bottom: 20px; }
+.codex [data-theme-surface="welcome-details"] {
+  margin-top: 20px;
+  border: 0;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+}
+.codex [data-theme-surface="welcome-details"] > div { padding-top: 7px; padding-bottom: 7px; border: 0; }
+.codex [data-theme-surface="welcome-details"] .font-mono { font-family: inherit; color: hsl(var(--muted-foreground)); }
+.codex [data-theme-surface="transcript"] .font-serif { font-family: inherit; }
+.codex [data-theme-surface="transcript"] .prose { --tw-prose-body: hsl(var(--foreground)); line-height: 1.8; }
+.codex .chat-message { padding-top: 8px; padding-bottom: 8px; }
+.codex [data-theme-surface="user-message"] { border: 0; border-radius: 20px; background: hsl(var(--muted) / 0.7); padding: 10px 16px; box-shadow: none; }
+.codex [data-theme-surface="user-avatar"] { display: none; }
+
+.codex .chat-composer-shell { padding-bottom: 22px; }
+.codex-composer-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px -15px;
+  padding: 10px 16px 24px;
+  border-radius: 18px 18px 0 0;
+  background: hsl(var(--muted) / 0.55);
+  font-size: 11px;
+}
+.codex [data-slot="prompt-input"] {
+  border-radius: 22px;
+  border-color: hsl(var(--codex-composer-border) / 0.8);
+  background: hsl(var(--codex-composer-bg));
+  box-shadow: 0 6px 24px -10px hsl(var(--codex-composer-shadow)), 0 1px 3px hsl(var(--codex-composer-shadow));
+  backdrop-filter: none;
+}
+.codex [data-slot="prompt-input"]:focus-within { border-color: hsl(var(--ring) / 0.4); }
+.codex [data-slot="prompt-input-body"] textarea { min-height: 82px; padding: 16px 18px 10px; font-size: 14px; }
+.codex [data-slot="prompt-input-submit"] { border-radius: 9999px; }
+.codex [data-slot="prompt-input-footer"] { border-top-color: transparent; padding: 6px 12px 10px; gap: 6px; }
+.codex [data-theme-surface="composer-actions"] { flex-wrap: wrap; justify-content: flex-end; min-width: 0; max-width: 100%; }
+
+.codex [data-theme-surface="settings-dialog"] { max-width: 980px; border-color: hsl(var(--border) / 0.75); border-radius: 18px; }
+.codex [data-theme-surface="settings-sidebar"] { background: hsl(var(--codex-sidebar-bg)); border-right-color: hsl(var(--border) / 0.55); }
+.codex [data-theme-surface="settings-card"] { background: hsl(var(--card)); border-color: hsl(var(--border) / 0.65); border-radius: 14px; overflow: hidden; }
+.codex [data-theme-surface="settings-card"] > * + * { border-top: 1px solid hsl(var(--border) / 0.6); }
+.codex select, .codex input:not([type="checkbox"]):not([type="radio"]) { border-radius: 9px; }
+
+@media (max-width: 767px) {
+  .codex [data-theme-surface="workspace"] { padding: 0; }
+  .codex [data-theme-surface="workspace-main"],
+  .codex [data-theme-surface="workspace"]:not(:has([data-theme-surface="sidebar"])) [data-theme-surface="workspace-main"],
+  .codex [data-theme-surface="sidebar"] { border: 0; border-radius: 0; }
+  .codex [data-theme-surface="workspace-header"] { padding: 8px 12px; }
+  .codex-navigation-rail { display: none; }
+  .codex .chat-composer-shell { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .codex [data-slot="prompt-input-body"] textarea { min-height: 64px; padding: 12px; }
+  .codex [data-theme-surface="settings-dialog"] { max-width: none; border-radius: 0; }
+  .codex-composer-context { margin-inline: 8px; padding-inline: 12px; }
+}
+
+.codex [data-theme-surface="project-metadata"] { display: none; }
+@media (min-width: 768px) {
+  .codex [data-theme-surface="sidebar-settings-link"] { display: none; }
 }

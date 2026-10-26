@@ -157,7 +157,7 @@ function SidebarProjectItem({
   };
 
   return (
-    <div className={cn('md:space-y-1', isDeleting && 'opacity-50 pointer-events-none')}>
+    <div data-theme-surface="project-item" data-selected={isSelected || undefined} className={cn('md:space-y-1', isDeleting && 'opacity-50 pointer-events-none')}>
       <div className="sticky top-0 z-10 md:group group">
         {isCompact && (
         <div className="bg-background">
@@ -371,7 +371,7 @@ function SidebarProjectItem({
                   <div className="truncate text-sm font-normal text-foreground" title={project.displayName}>
                     {project.displayName}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div data-theme-surface="project-metadata" className="text-xs text-muted-foreground">
                     {sessionCountDisplay}
                     {project.fullPath !== project.displayName && (
                       <span className="ml-1 opacity-60" title={project.fullPath}>

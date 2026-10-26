@@ -174,9 +174,14 @@
     },
     "theme": {
       "label": "테마",
-      "description": "밝은 테마나 어두운 테마를 선택하거나 운영체제 설정을 따릅니다",
+      "description": "인터페이스 레이아웃과 스타일 선택",
       "light": "밝게",
       "dark": "어둡게",
+      "appearance": "인터페이스 테마",
+      "default": "기본",
+      "colorMode": "색상 모드",
+      "colorDescription": "밝게, 어둡게 또는 시스템 설정 선택",
+      "codex": "Codex",
       "system": "시스템 설정 따르기"
     },
     "projectSorting": {

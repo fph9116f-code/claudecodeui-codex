@@ -149,9 +149,14 @@
     },
     "theme": {
       "label": "佈景主題",
-      "description": "選擇淺色或深色外觀，或跟隨作業系統設定",
+      "description": "選擇介面佈局與視覺風格",
       "light": "淺色",
       "dark": "深色",
+      "appearance": "介面主題",
+      "default": "預設",
+      "colorMode": "深淺色",
+      "colorDescription": "選擇淺色、深色或跟隨系統",
+      "codex": "Codex",
       "system": "跟隨系統外觀"
     },
     "projectSorting": {

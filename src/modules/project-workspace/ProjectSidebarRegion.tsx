@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useProjectSidebarState } from '@/modules/project-workspace/context/ProjectsStateContext';
 import { Sidebar } from '@/modules/sidebar';
+import { useOptionalAppearanceTheme } from '@/shared/context/ThemeContext';
 import { useUiPreferences } from '@/shared/context/UiPreferencesContext';
 import {
   SIDEBAR_WIDTH_KEYBOARD_STEP,
@@ -28,6 +29,7 @@ function ProjectSidebarRegion({
   // Hide sidebar leaves a 48px icon rail behind, which sizes itself — the stored
   // width and the drag handle only apply while the full sidebar is on screen.
   const { sidebarVisible } = useUiPreferences();
+  const isCodex = useOptionalAppearanceTheme() === 'codex';
   const isSidebarResizable = !isMobile && sidebarVisible;
   // Drag origin; null while no resize is in progress.
   const resizeOriginRef = useRef<{ pointerX: number; width: number } | null>(null);
@@ -118,8 +120,9 @@ function ProjectSidebarRegion({
   if (!isMobile) {
     return (
       <div
+        data-theme-surface="sidebar-region"
         className="relative h-full flex-shrink-0 border-r border-border/50"
-        style={isSidebarResizable ? { width: sidebarWidth } : undefined}
+        style={isSidebarResizable ? { width: sidebarWidth + (isCodex ? 56 : 0) } : isCodex ? { width: 56 } : undefined}
       >
         <Sidebar {...sidebarSharedProps} />
         {isSidebarResizable && (

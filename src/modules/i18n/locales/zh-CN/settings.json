@@ -174,9 +174,14 @@
     },
     "theme": {
       "label": "主题",
-      "description": "选择浅色或深色外观，或跟随操作系统设置",
+      "description": "选择界面布局与视觉风格",
       "light": "浅色",
       "dark": "深色",
+      "appearance": "界面主题",
+      "default": "默认",
+      "colorMode": "深浅色",
+      "colorDescription": "选择浅色、深色或跟随系统",
+      "codex": "Codex",
       "system": "跟随系统外观"
     },
     "projectSorting": {

@@ -22,7 +22,10 @@ export default function SidebarCollapsed({
   t,
 }: SidebarCollapsedProps) {
   return (
-    <div className="flex h-full w-12 flex-col items-center gap-1 bg-background/80 py-3 backdrop-blur-sm">
+    <div
+      data-theme-surface="sidebar"
+      className="flex h-full w-12 flex-col items-center gap-1 bg-background/80 py-3 backdrop-blur-sm"
+    >
       {/* Expand button with brand logo */}
       <button
         onClick={onExpand}

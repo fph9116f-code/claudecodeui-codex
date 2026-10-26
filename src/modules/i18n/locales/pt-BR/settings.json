@@ -174,9 +174,14 @@
     },
     "theme": {
       "label": "Tema",
-      "description": "Escolha uma aparência clara ou escura, ou siga seu sistema operacional",
+      "description": "Escolha o layout e o estilo da interface",
       "light": "Claro",
       "dark": "Escuro",
+      "appearance": "Tema da interface",
+      "default": "Padrão",
+      "colorMode": "Modo de cor",
+      "colorDescription": "Escolha claro, escuro ou conforme o sistema",
+      "codex": "Codex",
       "system": "Seguir a aparência do sistema"
     },
     "projectSorting": {

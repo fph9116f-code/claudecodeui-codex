@@ -1,4 +1,12 @@
 {
+  "codex": {
+    "running": "実行中",
+    "archived": "アーカイブ",
+    "recent": "最近",
+    "navigation": "ワークスペースのナビゲーション",
+    "newChat": "新しいチャット",
+    "pinned": "ピン留め"
+  },
   "projects": {
     "title": "プロジェクト",
     "newProject": "新規プロジェクト",

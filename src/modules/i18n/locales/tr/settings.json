@@ -149,9 +149,14 @@
     },
     "theme": {
       "label": "Tema",
-      "description": "Açık veya koyu bir görünüm seçin ya da işletim sisteminizi izleyin",
+      "description": "Arayüz düzenini ve stilini seçin",
       "light": "Açık",
       "dark": "Koyu",
+      "appearance": "Arayüz teması",
+      "default": "Varsayılan",
+      "colorMode": "Renk modu",
+      "colorDescription": "Açık, koyu veya sistem ayarını seçin",
+      "codex": "Codex",
       "system": "Sistem görünümünü izle"
     },
     "projectSorting": {

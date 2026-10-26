@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { Activity, Archive, Folder, MessageSquare, RotateCcw, Search, Trash2 } from 'lucide-react';
 import type { TFunction } from 'i18next';
 
+import { useOptionalAppearanceTheme } from '@/shared/context/ThemeContext';
 import { LLMProviderLogo, ScrollArea } from '@/shared/ui';
 import type { ArchivedProjectListItem, ArchivedSessionListItem, ConversationSearchResults, Project, RecentConversationListItem, ReleaseInfo, SearchProgress, SidebarProjectListProps, SidebarSearchMode } from '@/shared/types';
 import { formatCompactAge, getAllSessions } from '@/modules/sidebar/utils/sidebarProjectFormatting';
@@ -116,6 +117,7 @@ type SidebarContentProps = {
   onConversationResultClick: (projectId: string | null, sessionId: string, provider: string, messageTimestamp?: string | null, messageSnippet?: string | null) => void;
   onRefresh: () => void;
   isRefreshing: boolean;
+  onNewChat: () => void;
   onCreateProject: () => void;
   onCollapseSidebar: () => void;
   updateAvailable: boolean;
@@ -163,6 +165,7 @@ export default function SidebarContent({
   onConversationResultClick,
   onRefresh,
   isRefreshing,
+  onNewChat,
   onCreateProject,
   onCollapseSidebar,
   updateAvailable,
@@ -175,6 +178,7 @@ export default function SidebarContent({
   projectListProps,
   t,
 }: SidebarContentProps) {
+  const isCodex = useOptionalAppearanceTheme() === 'codex';
   const showConversationSearch = searchMode === 'conversations' && searchFilter.trim().length >= 2;
   const hasSearchResults = Boolean(
     conversationResults
@@ -184,9 +188,30 @@ export default function SidebarContent({
   const visibleArchivedItemsCount = archivedProjects.length + archivedSessions.length;
   const isRenamingOnMobile = isMobile && projectListProps.activeRename !== null;
 
+  const recentConversationsList = (
+    <SidebarRecentConversations
+      conversations={recentConversations}
+      total={recentConversationsTotal}
+      hasMore={recentConversationsHasMore}
+      isLoading={isRecentConversationsLoading}
+      isLoadingMore={isLoadingMoreRecentConversations}
+      hasError={recentConversationsError}
+      selectedSession={projectListProps.selectedSession}
+      currentTime={projectListProps.currentTime}
+      sessionActions={projectListProps}
+      onConversationSelect={onConversationResultClick}
+      onLoadMore={onLoadMoreRecentConversations}
+      onRetry={onRetryRecentConversations}
+      t={t}
+          />
+  );
+  const pinnedProjects = projectListProps.filteredProjects.filter((project) => projectListProps.isProjectStarred(project.projectId));
+  const unpinnedProjects = projectListProps.filteredProjects.filter((project) => !projectListProps.isProjectStarred(project.projectId));
+
   return (
     <div
-      className="flex h-full flex-col bg-background/80 backdrop-blur-sm md:w-full md:select-none"
+      data-theme-surface="sidebar"
+      className="flex h-full min-w-0 flex-1 flex-col bg-background/80 backdrop-blur-sm md:w-full md:select-none"
       style={{}}
     >
       <SidebarHeader
@@ -204,6 +229,7 @@ export default function SidebarContent({
         onSearchModeChange={onSearchModeChange}
         onRefresh={onRefresh}
         isRefreshing={isRefreshing}
+        onNewChat={onNewChat}
         onCreateProject={onCreateProject}
         onCollapseSidebar={onCollapseSidebar}
         t={t}
@@ -376,21 +402,7 @@ export default function SidebarContent({
             </div>
           ) : null
         ) : searchMode === 'conversations' ? (
-          <SidebarRecentConversations
-            conversations={recentConversations}
-            total={recentConversationsTotal}
-            hasMore={recentConversationsHasMore}
-            isLoading={isRecentConversationsLoading}
-            isLoadingMore={isLoadingMoreRecentConversations}
-            hasError={recentConversationsError}
-            selectedSession={projectListProps.selectedSession}
-            currentTime={projectListProps.currentTime}
-            sessionActions={projectListProps}
-            onConversationSelect={onConversationResultClick}
-            onLoadMore={onLoadMoreRecentConversations}
-            onRetry={onRetryRecentConversations}
-            t={t}
-          />
+          recentConversationsList
         ) : searchMode === 'running' ? (
           projectListProps.filteredProjects.length === 0 ? (
             <div className="px-4 py-12 text-center md:py-8">
@@ -680,6 +692,22 @@ export default function SidebarContent({
               ))}
             </div>
           )
+        ) : isCodex ? (
+          <div className="codex-project-groups">
+            {pinnedProjects.length > 0 && (
+              <section aria-label={t('codex.pinned')}>
+                <h2 className="codex-section-label">{t('codex.pinned')}</h2>
+                <SidebarProjectList {...projectListProps} filteredProjects={pinnedProjects} />
+              </section>
+            )}
+            {(unpinnedProjects.length > 0 || projectListProps.filteredProjects.length === 0) && (
+              <section aria-label={t('search.modeProjects')}>
+                <h2 className="codex-section-label">{t('search.modeProjects')}</h2>
+                <SidebarProjectList {...projectListProps} filteredProjects={unpinnedProjects} />
+              </section>
+            )}
+            {!searchFilter.trim() && <section aria-label={t('recent.title')}>{recentConversationsList}</section>}
+          </div>
         ) : (
           <SidebarProjectList {...projectListProps} />
         )}

@@ -190,6 +190,7 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }: Set
     >
       {/* Marked as a modal dialog so layers underneath, like the code editor, leave its Escape alone. */}
       <div
+        data-theme-surface="settings-dialog"
         role="dialog"
         aria-modal="true"
         aria-label={t('title')}

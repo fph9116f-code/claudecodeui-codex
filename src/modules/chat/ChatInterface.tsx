@@ -533,6 +533,8 @@ function ChatInterface({
           )}
 
           <ChatComposer
+          projectName={selectedProject.displayName}
+          projectPath={selectedProject.fullPath || selectedProject.path}
           pendingPermissionRequests={pendingPermissionRequests}
           handlePermissionDecision={handlePermissionDecision}
           handleGrantToolPermission={handleGrantToolPermission}

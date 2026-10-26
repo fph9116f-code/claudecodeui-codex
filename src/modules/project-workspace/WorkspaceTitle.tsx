@@ -163,11 +163,11 @@ export default function WorkspaceTitle({
   /** Path, creation time and session id under a chat title; shared by drafts and existing sessions. */
   const chatContext = (
     <>
-      <div className="flex min-w-0 text-[11px] leading-tight text-muted-foreground" title={sessionFullPath}>
+      <div data-theme-surface="title-context" className="flex min-w-0 text-[11px] leading-tight text-muted-foreground" title={sessionFullPath}>
         {pathParents && <span className="min-w-0 truncate">{pathParents}</span>}
         <span className="shrink-0">{pathLeaf}</span>
       </div>
-      <div className="flex min-w-0 items-center gap-1 text-[11px] leading-tight text-muted-foreground">
+      <div data-theme-surface="title-context" className="flex min-w-0 items-center gap-1 text-[11px] leading-tight text-muted-foreground">
         {createdLabel && (
           <>
             <span className="shrink-0">{t('mainContent.sessionCreatedAt', { time: createdLabel })}</span>

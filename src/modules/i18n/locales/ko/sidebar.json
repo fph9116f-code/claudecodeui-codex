@@ -1,4 +1,12 @@
 {
+  "codex": {
+    "running": "실행 중",
+    "archived": "보관함",
+    "recent": "최근",
+    "navigation": "작업 공간 탐색",
+    "newChat": "새 채팅",
+    "pinned": "고정됨"
+  },
   "projects": {
     "title": "프로젝트",
     "newProject": "새 프로젝트",

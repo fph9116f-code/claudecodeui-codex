@@ -168,6 +168,7 @@
   },
   "emptyState": {
     "newSessionHint": "在此项目中开始新会话",
+    "codexGreeting": "你想让我们在 {{project}} 中构建什么？",
     "projectDirectory": "项目目录",
     "copyDirectory": "复制项目目录",
     "directoryCopied": "项目目录已复制",

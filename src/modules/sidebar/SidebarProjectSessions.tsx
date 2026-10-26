@@ -125,7 +125,7 @@ export default function SidebarProjectSessions({
       : t('sessions.selectAll');
 
   return (
-    <div className="ml-3 space-y-1 border-l border-border pl-3">
+    <div data-theme-surface="project-sessions" className="ml-3 space-y-1 border-l border-border pl-3">
       {isCompact ? (
         <div className="px-3 pb-1 pt-1">
           <button

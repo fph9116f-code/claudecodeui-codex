@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 
+import { useOptionalAppearanceTheme } from '@/shared/context/ThemeContext';
 import { api } from '@/shared/api';
 import { subscribeToUserPreferences } from '@/shared/userSettings';
 import { usePaletteOps } from '@/modules/command-palette';
@@ -82,6 +83,7 @@ export function useSidebarController({
   sidebarVisible,
 }: UseSidebarControllerArgs) {
   const paletteOps = usePaletteOps();
+  const isCodex = useOptionalAppearanceTheme() === 'codex';
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   // Running groups start expanded and remember manual collapses independently of Projects.
   const [collapsedRunningProjects, setCollapsedRunningProjects] = useState<Set<string>>(new Set());
@@ -338,14 +340,15 @@ export function useSidebarController({
   }, [fetchArchivedSessions]);
 
   useEffect(() => {
-    if (searchMode !== 'conversations' || debouncedSearchQuery.length >= 2) {
+    const showsRecents = searchMode === 'conversations' || (isCodex && searchMode === 'projects' && !debouncedSearchQuery);
+    if (!showsRecents || debouncedSearchQuery.length >= 2) {
       return;
     }
 
     reloadRecentConversations();
-  }, [debouncedSearchQuery, reloadRecentConversations, searchMode]);
+  }, [debouncedSearchQuery, isCodex, reloadRecentConversations, searchMode]);
 
-  // The Conversations list is only fetched when its tab opens, while `projects`
+  // The recents feed is loaded independently, while `projects`
   // is patched the moment a session is renamed from the workspace header. Fold
   // those title changes into the rows already loaded, or a header rename would
   // leave the highlighted conversation on its old name. The loaded rows are
@@ -1259,14 +1262,14 @@ export function useSidebarController({
       await Promise.all([
         Promise.resolve(onRefresh()),
         fetchArchivedSessions(),
-        searchMode === 'conversations'
+        (searchMode === 'conversations' || (isCodex && searchMode === 'projects'))
           ? fetchRecentConversationsPage(0, false)
           : Promise.resolve(),
       ]);
     } finally {
       setIsRefreshing(false);
     }
-  }, [fetchArchivedSessions, fetchRecentConversationsPage, onRefresh, searchMode]);
+  }, [fetchArchivedSessions, fetchRecentConversationsPage, isCodex, onRefresh, searchMode]);
 
   const updateSessionSummary = useCallback(
     // `_projectId` and `_provider` are preserved for compatibility with

@@ -1611,10 +1611,12 @@ export type SidebarProjectListProps = SessionRowActions & {
  *
  * `light` and `dark` pin the appearance; `system` follows the operating
  * system's light/dark setting and keeps following it while the app is open.
- * `system` is the default, and is also what an unrecognised stored value
- * resolves to.
+ * `system` is the default and the fallback for an unrecognised stored value.
  */
 export type ThemeMode = 'light' | 'dark' | 'system';
+
+/** 界面布局与视觉风格，独立于深浅色；由主题上下文和用户偏好共同使用。 */
+export type AppearanceTheme = 'default' | 'codex';
 
 /** The ordering applied to the project list, either alphabetically by name or by most recent activity, persisted alongside the user's appearance settings. */
 export type ProjectSortOrder = 'name' | 'date';

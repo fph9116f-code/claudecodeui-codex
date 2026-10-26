@@ -174,9 +174,14 @@
     },
     "theme": {
       "label": "Tema",
-      "description": "Pilih tampilan terang atau gelap, atau ikuti sistem operasi Anda",
+      "description": "Pilih tata letak dan gaya antarmuka",
       "light": "Terang",
       "dark": "Gelap",
+      "appearance": "Tema antarmuka",
+      "default": "Bawaan",
+      "colorMode": "Mode warna",
+      "colorDescription": "Pilih terang, gelap, atau ikuti sistem",
+      "codex": "Codex",
       "system": "Ikuti tampilan sistem"
     },
     "projectSorting": {

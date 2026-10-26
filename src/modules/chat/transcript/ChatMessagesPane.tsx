@@ -175,6 +175,7 @@ function ChatMessagesPane({
 
   return (
     <div
+      data-theme-surface="transcript"
       ref={scrollContainerRef}
       onWheel={onWheel}
       onTouchMove={onTouchMove}

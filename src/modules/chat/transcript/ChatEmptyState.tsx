@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Check, Copy, Folder, MessageSquare } from 'lucide-react';
 
 import { NextTaskBanner } from '@/modules/task-master';
-import { copyTextToClipboard } from '@/shared/utils';
+import { useOptionalAppearanceTheme } from '@/shared/context/ThemeContext';
 import type { Project, ProjectSession } from '@/shared/types';
+import { copyTextToClipboard } from '@/shared/utils';
 
 /** How long the directory row shows its copied state after a successful copy. */
 const DIRECTORY_COPIED_FEEDBACK_MS = 1500;
@@ -85,6 +86,7 @@ export default function ChatEmptyState({
   setInput,
 }: ChatEmptyStateProps) {
   const { t } = useTranslation('chat');
+  const isCodexTheme = useOptionalAppearanceTheme() === 'codex';
 
   if (!selectedSession) {
     const projectPath = selectedProject.fullPath || selectedProject.path || '';
@@ -92,21 +94,37 @@ export default function ChatEmptyState({
     const sessionCount = selectedProject.sessionMeta?.total ?? selectedProject.sessions?.length ?? 0;
 
     return (
-      <div className="flex h-full items-center justify-center px-4">
-        <div className="w-full max-w-xl">
+      <div data-theme-surface="chat-welcome" className="flex h-full w-full items-center justify-center px-4">
+        <div className="w-full max-w-2xl">
           <div className="text-center">
+            {isCodexTheme && (
+              <div className="mb-5 flex justify-center">
+                <MessageSquare className="h-11 w-11 text-muted-foreground/40" strokeWidth={1.4} aria-hidden="true" />
+              </div>
+            )}
             <h2
               title={projectName}
-              className="truncate text-xl font-semibold tracking-tight text-foreground"
+              className={
+                isCodexTheme
+                  ? 'break-words text-2xl font-medium tracking-tight text-foreground sm:text-3xl'
+                  : 'truncate text-xl font-semibold tracking-tight text-foreground'
+              }
             >
-              {projectName}
+              {isCodexTheme
+                ? t('emptyState.codexGreeting', {
+                    project: projectName,
+                    defaultValue: 'What should we build in {{project}}?',
+                  })
+                : projectName}
             </h2>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              {t('emptyState.newSessionHint')}
-            </p>
+            {!isCodexTheme && (
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                {t('emptyState.newSessionHint')}
+              </p>
+            )}
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-xl border border-border/60 bg-muted/20">
+          <div data-theme-surface="welcome-details" className="mt-6 overflow-hidden rounded-xl border border-border/60 bg-muted/20">
             <ProjectDirectoryRow
               path={projectPath}
               label={t('emptyState.projectDirectory')}

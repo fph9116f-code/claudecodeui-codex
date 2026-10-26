@@ -2,6 +2,7 @@ import { Loader2, MessageSquare } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import type { TFunction } from 'i18next';
 
+import { useOptionalAppearanceTheme } from '@/shared/context/ThemeContext';
 import { Button, LLMProviderLogo, Tooltip } from '@/shared/ui';
 import { cn } from '@/shared/utils';
 import type { ProjectSession, RecentConversationListItem, SessionRowActions } from '@/shared/types';
@@ -64,6 +65,7 @@ export default function SidebarRecentConversations({
   onRetry,
   t,
 }: SidebarRecentConversationsProps) {
+  const isCodex = useOptionalAppearanceTheme() === 'codex';
   if (isLoading && conversations.length === 0) {
     return <RecentConversationSkeleton />;
   }
@@ -100,7 +102,7 @@ export default function SidebarRecentConversations({
     <div className="px-1" data-testid="recent-conversations-list">
       <div className="flex items-center justify-between px-2 pb-1.5 pt-0.5">
         <span className="text-[11px] font-medium text-muted-foreground">
-          {t('recent.title', 'Recent conversations')}
+          {isCodex ? t('codex.recent') : t('recent.title', 'Recent conversations')}
         </span>
         <span className="text-[10px] tabular-nums text-muted-foreground/70">{total}</span>
       </div>
@@ -240,7 +242,15 @@ export default function SidebarRecentConversations({
         })}
       </div>
 
-      {hasMore && (
+      {hasError && (
+        <div role="alert" className="px-2 py-2 text-xs text-muted-foreground">
+          <span>{t('recent.loadFailed', 'Could not load recent conversations')}</span>
+          <Button variant="ghost" size="sm" onClick={onRetry} className="ml-1 h-7 text-xs">
+            {t('buttons.retry', { ns: 'common', defaultValue: 'Try again' })}
+          </Button>
+        </div>
+      )}
+      {hasMore && !hasError && (
         <Button
           variant="ghost"
           size="sm"

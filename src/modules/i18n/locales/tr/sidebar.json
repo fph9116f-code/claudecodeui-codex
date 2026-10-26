@@ -1,4 +1,12 @@
 {
+  "codex": {
+    "running": "Çalışan oturumlar",
+    "archived": "Arşiv",
+    "recent": "Son",
+    "navigation": "Çalışma alanı gezintisi",
+    "newChat": "Yeni sohbet",
+    "pinned": "Sabitlenenler"
+  },
   "projects": {
     "title": "Projeler",
     "newProject": "Yeni Proje",

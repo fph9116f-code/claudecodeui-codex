@@ -36,7 +36,7 @@ export default function SettingsSidebar({ activeTab, onChange }: SettingsSidebar
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden w-56 flex-shrink-0 border-r border-border bg-muted/30 md:flex md:flex-col">
+      <aside data-theme-surface="settings-sidebar" className="hidden w-56 flex-shrink-0 border-r border-border bg-muted/30 md:flex md:flex-col">
         <nav className="flex flex-col gap-1 p-3">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;

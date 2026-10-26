@@ -30,7 +30,7 @@ export default function SidebarFooter({
   t,
 }: SidebarFooterProps) {
   return (
-    <div className="flex-shrink-0" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
+    <div data-theme-surface="sidebar-footer" className="flex-shrink-0" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
       {/* Restart-required banner: the running server version differs from the
           installed/frontend version (updated but not restarted). */}
       {restartRequired && (
@@ -112,7 +112,7 @@ export default function SidebarFooter({
       </div>
 
       {/* Desktop settings */}
-      <div className="hidden px-2 py-1.5 md:block">
+      <div data-theme-surface="sidebar-settings-link" className="hidden px-2 py-1.5 md:block">
         <button
           className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
           onClick={onShowSettings}

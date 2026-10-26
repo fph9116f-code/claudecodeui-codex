@@ -148,9 +148,14 @@
     },
     "theme": {
       "label": "テーマ",
-      "description": "ライトまたはダークの外観を選ぶか、OS の設定に合わせます",
+      "description": "画面のレイアウトとスタイルを選択",
       "light": "ライト",
       "dark": "ダーク",
+      "appearance": "インターフェースのテーマ",
+      "default": "デフォルト",
+      "colorMode": "カラーモード",
+      "colorDescription": "ライト、ダーク、またはシステム設定を選択",
+      "codex": "Codex",
       "system": "システムの外観に合わせる"
     },
     "projectSorting": {

@@ -1,5 +1,6 @@
 import { api } from '@/shared/api';
 import { CODE_EDITOR_STORAGE_KEYS } from '@/shared/constants';
+import type { AppearanceTheme, ThemeMode } from '@/shared/types';
 
 /**
  * The one reader and writer for the settings that used to live in browser
@@ -17,7 +18,8 @@ import { CODE_EDITOR_STORAGE_KEYS } from '@/shared/constants';
 
 /** Every setting the server stores for a user. */
 export type UserPreferences = {
-  theme: 'light' | 'dark';
+  theme: ThemeMode;
+  appearanceTheme: AppearanceTheme;
   userLanguage: string;
   tasksEnabled: boolean;
   projectSortOrder: 'name' | 'date';
@@ -55,6 +57,7 @@ const SERVER_WRITE_DEBOUNCE_MS = 400;
  */
 const LEGACY_STORAGE_KEYS: Record<UserPreferenceKey, string> = {
   theme: 'theme',
+  appearanceTheme: 'appearance-theme',
   userLanguage: 'userLanguage',
   tasksEnabled: 'tasks-enabled',
   projectSortOrder: 'claude-settings',
@@ -214,7 +217,7 @@ function readLegacyPreference(key: UserPreferenceKey): unknown {
     return undefined;
   }
 
-  if (key === 'theme' || key === 'userLanguage' || key === 'selectedProvider') {
+  if (key === 'theme' || key === 'appearanceTheme' || key === 'userLanguage' || key === 'selectedProvider') {
     return raw;
   }
 
@@ -282,12 +285,10 @@ export async function hydrateUserPreferences(): Promise<void> {
 
   try {
     const response = await api.user.preferences();
-    if (response.ok) {
-      const payload = (await response.json()) as { preferences?: unknown };
-      if (isRecord(payload.preferences)) {
-        serverPreferences = payload.preferences as PreferenceRecord;
-      }
-    }
+    if (!response.ok) return;
+    const payload = (await response.json()) as { preferences?: unknown };
+    if (!isRecord(payload.preferences)) return;
+    serverPreferences = payload.preferences as PreferenceRecord;
   } catch (error) {
     // Keep whatever the mirror holds; an offline load must still render the
     // user's own theme and language rather than snapping back to defaults.
@@ -301,9 +302,14 @@ export async function hydrateUserPreferences(): Promise<void> {
       continue;
     }
 
-    const legacyValue = key === 'codeEditorSettings'
+    let legacyValue = key === 'codeEditorSettings'
       ? readLegacyCodeEditorSettings()
       : readLegacyPreference(key);
+
+    // 新外观选项没有旧版独立存储；服务端尚无记录时保留当前设备的选择。
+    if (legacyValue === undefined && (key === 'appearanceTheme' || key === 'theme')) {
+      legacyValue = preferences[key];
+    }
 
     if (legacyValue !== undefined) {
       migrated[key] = legacyValue;
@@ -318,6 +324,14 @@ export async function hydrateUserPreferences(): Promise<void> {
     delete pendingServerWrites[key];
   }
 
+  const merged = { ...serverPreferences, ...migrated };
+  // 仅在成功取得服务端偏好后转换草稿值，避免首次渲染覆盖其他设备的设置。
+  if (merged.theme === 'codex') {
+    migrated.theme = 'system';
+    if (merged.appearanceTheme !== 'default' && merged.appearanceTheme !== 'codex') {
+      migrated.appearanceTheme = 'codex';
+    }
+  }
   preferences = { ...serverPreferences, ...migrated };
   hasHydrated = true;
   writeMirror();

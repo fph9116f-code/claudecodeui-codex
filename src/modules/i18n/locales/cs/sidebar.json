@@ -1,4 +1,12 @@
 {
+  "codex": {
+    "running": "Běžící relace",
+    "archived": "Archiv",
+    "recent": "Nedávné",
+    "navigation": "Navigace pracovního prostoru",
+    "newChat": "Nový chat",
+    "pinned": "Připnuté"
+  },
   "projects": {
     "title": "Projekty",
     "newProject": "Nový projekt",

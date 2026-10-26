@@ -1,4 +1,12 @@
 {
+  "codex": {
+    "running": "Sessions en cours",
+    "archived": "Archives",
+    "recent": "Récentes",
+    "navigation": "Navigation de l’espace de travail",
+    "newChat": "Nouvelle discussion",
+    "pinned": "Épinglés"
+  },
   "projects": {
     "title": "Projets",
     "newProject": "Nouveau projet",

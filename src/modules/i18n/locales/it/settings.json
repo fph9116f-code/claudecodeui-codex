@@ -148,9 +148,14 @@
     },
     "theme": {
       "label": "Tema",
-      "description": "Scegli un aspetto chiaro o scuro, oppure segui quello del sistema operativo",
+      "description": "Scegli il layout e lo stile dell’interfaccia",
       "light": "Chiaro",
       "dark": "Scuro",
+      "appearance": "Tema interfaccia",
+      "default": "Predefinito",
+      "colorMode": "Modalità colore",
+      "colorDescription": "Scegli chiaro, scuro o segui il sistema",
+      "codex": "Codex",
       "system": "Segui l'aspetto del sistema"
     },
     "projectSorting": {

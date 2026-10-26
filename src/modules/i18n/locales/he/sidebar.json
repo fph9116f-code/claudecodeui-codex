@@ -1,4 +1,12 @@
 {
+  "codex": {
+    "running": "הפעלות פעילות",
+    "archived": "ארכיון",
+    "recent": "אחרונים",
+    "navigation": "ניווט בסביבת העבודה",
+    "newChat": "צ׳אט חדש",
+    "pinned": "מוצמדים"
+  },
   "projects": {
     "title": "פרויקטים",
     "newProject": "פרויקט חדש",

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '@/shared/context/ThemeContext';
-import type { CodeEditorSettingsState, ProjectSortOrder, ThemeMode } from '@/shared/types';
+import type { AppearanceTheme, CodeEditorSettingsState, ProjectSortOrder, ThemeMode } from '@/shared/types';
 import { LanguageSelector } from '@/modules/i18n';
 import SettingsCard from '@/modules/settings/SettingsCard';
 import SettingsRow from '@/modules/settings/SettingsRow';
@@ -29,20 +29,34 @@ export default function AppearanceSettingsTab({
   onCodeEditorFontSizeChange,
 }: AppearanceSettingsTabProps) {
   const { t } = useTranslation('settings');
-  const { themeMode, setThemeMode } = useTheme();
+  const { appearanceTheme, setAppearanceTheme, themeMode, setThemeMode } = useTheme();
 
   return (
     <div className="space-y-8">
       <SettingsSection title={t('appearanceSettings.theme.label')}>
         <SettingsCard>
           <SettingsRow
-            label={t('appearanceSettings.theme.label')}
+            label={t('appearanceSettings.theme.appearance')}
             description={t('appearanceSettings.theme.description')}
           >
             <select
+              aria-label={t('appearanceSettings.theme.appearance')}
+              value={appearanceTheme}
+              onChange={(event) => setAppearanceTheme(event.target.value as AppearanceTheme)}
+              className="w-full rounded-lg border border-input bg-card p-2.5 text-sm text-foreground focus:ring-1 focus:ring-primary sm:w-36"
+            >
+              <option value="default">{t('appearanceSettings.theme.default')}</option>
+              <option value="codex">{t('appearanceSettings.theme.codex')}</option>
+            </select>
+          </SettingsRow>
+          <SettingsRow
+            label={t('appearanceSettings.theme.colorMode')}
+            description={t('appearanceSettings.theme.colorDescription')}
+          >
+            <select
+              aria-label={t('appearanceSettings.theme.colorMode')}
               value={themeMode}
               onChange={(event) => setThemeMode(event.target.value as ThemeMode)}
-              aria-label={t('appearanceSettings.theme.label')}
               className="w-full touch-manipulation rounded-lg border border-input bg-card p-2.5 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary sm:w-36"
             >
               <option value="light">{t('appearanceSettings.theme.light')}</option>

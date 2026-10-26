@@ -1,4 +1,12 @@
 {
+  "codex": {
+    "running": "Sesi berjalan",
+    "archived": "Arsip",
+    "recent": "Terbaru",
+    "navigation": "Navigasi ruang kerja",
+    "newChat": "Obrolan baru",
+    "pinned": "Disematkan"
+  },
   "projects": {
     "title": "Proyek",
     "newProject": "Proyek Baru",

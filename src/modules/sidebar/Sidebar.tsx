@@ -1,6 +1,8 @@
 import { memo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useOptionalAppearanceTheme } from '@/shared/context/ThemeContext';
+import SidebarNavigationRail from '@/modules/sidebar/SidebarNavigationRail';
 import { useDeviceSettings } from '@/shared/hooks/useDeviceSettings';
 import { useVersionCheck } from '@/shared/hooks/useVersionCheck';
 import { useUiPreferences, useSetUiPreference } from '@/shared/context/UiPreferencesContext';
@@ -64,6 +66,7 @@ function Sidebar({
   isMobile,
 }: SidebarProps) {
   const { t } = useTranslation(['sidebar', 'common']);
+  const isCodex = useOptionalAppearanceTheme() === 'codex';
   const { isPWA } = useDeviceSettings({ trackMobile: false });
   const { updateAvailable, restartRequired, latestVersion, currentVersion, releaseInfo, installMode } = useVersionCheck(
     'fph9116f-code',
@@ -266,7 +269,24 @@ function Sidebar({
         t={t}
       />
 
-      {isSidebarCollapsed ? (
+      <div className="flex h-full min-w-0">
+      {isCodex && !isMobile && (
+        <SidebarNavigationRail
+          searchMode={searchMode}
+          runningSessionsCount={runningSessionsCount}
+          sidebarVisible={!isSidebarCollapsed}
+          updateAvailable={updateAvailable || restartRequired}
+          onSelectMode={(mode) => {
+            setSearchMode(mode);
+            if (mode === 'projects') clearConversationResults();
+            handleExpandSidebar();
+          }}
+          onShowSettings={onShowSettings}
+          onShowVersionModal={() => setShowVersionModal(true)}
+          t={t}
+        />
+      )}
+      {isSidebarCollapsed ? (isCodex ? null : (
         <SidebarCollapsed
           onExpand={handleExpandSidebar}
           onShowSettings={onShowSettings}
@@ -275,7 +295,7 @@ function Sidebar({
           onShowVersionModal={() => setShowVersionModal(true)}
           t={t}
         />
-      ) : (
+      )) : (
         <>
         <SidebarContent
             isPWA={isPWA}
@@ -347,6 +367,10 @@ function Sidebar({
               void refreshProjects();
             }}
             isRefreshing={isRefreshing}
+            onNewChat={() => {
+              if (selectedProject) onNewSession(selectedProject);
+              else setShowNewProject(true);
+            }}
             onCreateProject={() => setShowNewProject(true)}
             onCollapseSidebar={handleCollapseSidebar}
             updateAvailable={updateAvailable}
@@ -361,6 +385,8 @@ function Sidebar({
           />
         </>
       )}
+
+      </div>
 
       <SidebarArchiveToast
         toast={archiveToast}

@@ -1,6 +1,7 @@
-import { FolderPlus, Plus, RefreshCw, Search, X, PanelLeftClose } from 'lucide-react';
+import { FolderPlus, SquarePen, Plus, RefreshCw, Search, X, PanelLeftClose } from 'lucide-react';
 import type { TFunction } from 'i18next';
 
+import { useOptionalAppearanceTheme } from '@/shared/context/ThemeContext';
 import { Button, Input } from '@/shared/ui';
 import { CLOUDCLI_WORDMARK_FONT_FAMILY } from '@/shared/constants';
 import { IS_PLATFORM } from '@/shared/utils';
@@ -26,6 +27,7 @@ type SidebarHeaderProps = {
   onSearchModeChange: (mode: SidebarSearchMode) => void;
   onRefresh: () => void;
   isRefreshing: boolean;
+  onNewChat: () => void;
   onCreateProject: () => void;
   onCollapseSidebar: () => void;
   t: TFunction;
@@ -66,10 +68,12 @@ export default function SidebarHeader({
   onSearchModeChange,
   onRefresh,
   isRefreshing,
+  onNewChat,
   onCreateProject,
   onCollapseSidebar,
   t,
 }: SidebarHeaderProps) {
+  const isCodex = useOptionalAppearanceTheme() === 'codex';
   const showSearchTools = (projectsCount > 0 || runningSessionsCount > 0 || archivedSessionsCount > 0 || isArchivedSessionsLoading) && !isLoading;
   const searchPlaceholder = searchMode === 'conversations'
     ? t('search.conversationsPlaceholder')
@@ -78,6 +82,45 @@ export default function SidebarHeader({
       : searchMode === 'running'
         ? t('search.runningPlaceholder', 'Search running sessions...')
         : t('projects.searchPlaceholder');
+
+  if (isCodex) {
+    return (
+      <div className="codex-sidebar-header">
+        <div className="flex min-w-0 items-center gap-1">
+          <h1 className="min-w-0 flex-1 truncate text-sm font-semibold" title={t('app.title')}>{t('app.title')}</h1>
+          <Button variant="ghost" size="icon" onClick={onRefresh} disabled={isRefreshing} aria-label={t('tooltips.refresh')} className="h-8 w-8 shrink-0">
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onCreateProject} aria-label={t('tooltips.createProject')} className="h-8 w-8 shrink-0">
+            <FolderPlus className="h-4 w-4" />
+          </Button>
+          {!isMobile && (
+            <Button variant="ghost" size="icon" onClick={onCollapseSidebar} aria-label={t('tooltips.hideSidebar')} className="h-8 w-8 shrink-0">
+              <PanelLeftClose className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+        <button type="button" className="codex-new-chat" onClick={onNewChat}>
+          <SquarePen className="h-4 w-4" strokeWidth={1.7} />
+          {t('codex.newChat')}
+        </button>
+        {isMobile && (
+          <SidebarModeTabs searchMode={searchMode} onSearchModeChange={onSearchModeChange} runningSessionsCount={runningSessionsCount} t={t} />
+        )}
+        {showSearchTools && (
+          <div className="relative mt-2">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input aria-label={searchPlaceholder} value={searchFilter} onChange={(event) => onSearchFilterChange(event.target.value)} placeholder={searchPlaceholder} className="h-8 border-transparent bg-transparent pl-8 pr-7 text-xs focus:border-border focus:bg-background" />
+            {searchFilter && (
+              <button type="button" aria-label={t('search.clearSearch')} onClick={onClearSearchFilter} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex-shrink-0">

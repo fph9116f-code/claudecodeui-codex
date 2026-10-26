@@ -1,4 +1,20 @@
 {
+  "recent": {
+    "title": "最近聊天",
+    "emptyTitle": "暫無聊天",
+    "emptyDescription": "最近更新的聊天會顯示於此。",
+    "loadFailed": "最近聊天載入失敗",
+    "loadMore": "載入更早的聊天",
+    "loadingMore": "正在載入…"
+  },
+  "codex": {
+    "running": "執行中",
+    "archived": "封存",
+    "recent": "最近",
+    "navigation": "工作區導覽",
+    "newChat": "新聊天",
+    "pinned": "置頂"
+  },
   "projects": {
     "title": "專案",
     "newProject": "新增專案",

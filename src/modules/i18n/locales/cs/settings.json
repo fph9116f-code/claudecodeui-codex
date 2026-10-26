@@ -148,6 +148,18 @@
     }
   },
   "appearanceSettings": {
+    "theme": {
+      "appearance": "Motiv rozhraní",
+      "default": "Výchozí",
+      "colorMode": "Barevný režim",
+      "description": "Vyberte rozvržení a styl rozhraní",
+      "colorDescription": "Světlý, tmavý nebo podle systému",
+      "label": "Motiv rozhraní",
+      "light": "Světlý",
+      "dark": "Tmavý",
+      "system": "Podle systému",
+      "codex": "Codex"
+    },
     "darkMode": {
       "label": "Tmavý režim",
       "description": "Přepínání mezi světlým a tmavým motivem"

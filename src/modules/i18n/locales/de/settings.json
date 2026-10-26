@@ -148,9 +148,14 @@
     },
     "theme": {
       "label": "Design",
-      "description": "Wählen Sie ein helles oder dunkles Erscheinungsbild oder folgen Sie Ihrem Betriebssystem",
+      "description": "Layout und Stil der Oberfläche wählen",
       "light": "Hell",
       "dark": "Dunkel",
+      "appearance": "Oberflächendesign",
+      "default": "Standard",
+      "colorMode": "Farbmodus",
+      "colorDescription": "Hell, dunkel oder Systemeinstellung wählen",
+      "codex": "Codex",
       "system": "Systemdarstellung folgen"
     },
     "projectSorting": {

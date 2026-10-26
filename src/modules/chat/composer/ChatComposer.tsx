@@ -10,8 +10,9 @@ import type {
   RefObject,
   TouchEvent,
 } from 'react';
-import { PaperclipIcon, MessageSquareIcon, XIcon, Loader2, ArrowUpIcon, PencilIcon, CornerUpRightIcon } from 'lucide-react';
+import { FolderIcon, MonitorIcon, PaperclipIcon, MessageSquareIcon, XIcon, Loader2, ArrowUpIcon, PencilIcon, CornerUpRightIcon } from 'lucide-react';
 
+import { useOptionalAppearanceTheme } from '@/shared/context/ThemeContext';
 import { useVoiceInput } from '@/modules/chat/hooks/useVoiceInput';
 import { useVoiceAvailable } from '@/modules/chat/hooks/useVoiceAvailable';
 import type { ChatQueueMessage, ScheduledMessage, SlashCommand,SessionActivity,PendingPermissionRequest,PermissionMode,ProviderModelOption } from '@/shared/types';
@@ -43,6 +44,9 @@ type MentionableFile = {
 };
 
 type ChatComposerProps = {
+  /** 当前项目的真实上下文，供 Codex 外观的输入面板展示。 */
+  projectName?: string;
+  projectPath?: string;
   pendingPermissionRequests: PendingPermissionRequest[];
   handlePermissionDecision: (
     requestIds: string | string[],
@@ -138,6 +142,8 @@ type ChatComposerProps = {
  * model/permission popovers that drive the next turn.
  */
 export default function ChatComposer({
+  projectName,
+  projectPath,
   pendingPermissionRequests,
   handlePermissionDecision,
   handleGrantToolPermission,
@@ -215,6 +221,7 @@ export default function ChatComposer({
   isTextareaExpanded,
   sendByCtrlEnter,
 }: ChatComposerProps) {
+  const isCodex = useOptionalAppearanceTheme() === 'codex';
   const { t } = useTranslation('chat');
   const fileDropdownRef = useRef<HTMLDivElement | null>(null);
   const selectedFileRef = useRef<HTMLDivElement | null>(null);
@@ -411,6 +418,16 @@ export default function ChatComposer({
           frequentCommands={frequentCommands}
         />
 
+        {isCodex && projectName && (
+          <div className="codex-composer-context" title={projectPath}>
+            <span className="flex min-w-0 items-center gap-2">
+              <FolderIcon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{projectName}</span>
+            </span>
+            <MonitorIcon className="ml-auto h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="max-w-32 truncate text-muted-foreground">{providerLabel}</span>
+          </div>
+        )}
         <PromptInput
           onSubmit={onSubmit as (event: FormEvent<HTMLFormElement>) => void}
           status={isLoading ? 'streaming' : 'ready'}
@@ -521,7 +538,7 @@ export default function ChatComposer({
 
           </PromptInputTools>
 
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <div data-theme-surface="composer-actions" className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             <ScheduleMessagePopover
               disabled={!input.trim()}
               onSchedule={onScheduleMessage}

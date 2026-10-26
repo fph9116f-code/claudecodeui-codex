@@ -175,9 +175,14 @@
     },
     "theme": {
       "label": "ערכת נושא",
-      "description": "בחירת מראה בהיר או כהה, או מעקב אחרי מערכת ההפעלה",
+      "description": "בחירת פריסה וסגנון של הממשק",
       "light": "בהיר",
       "dark": "כהה",
+      "appearance": "ערכת נושא לממשק",
+      "default": "ברירת מחדל",
+      "colorMode": "מצב צבע",
+      "colorDescription": "בחירת מצב בהיר, כהה או לפי המערכת",
+      "codex": "Codex",
       "system": "לפי מראה המערכת"
     },
     "projectSorting": {

@@ -196,6 +196,7 @@
   },
   "emptyState": {
     "newSessionHint": "Start a new session in this project",
+    "codexGreeting": "What should we build in {{project}}?",
     "projectDirectory": "Project directory",
     "copyDirectory": "Copy project directory",
     "directoryCopied": "Project directory copied",

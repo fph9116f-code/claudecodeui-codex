@@ -1,4 +1,20 @@
 {
+  "recent": {
+    "title": "最近会话",
+    "emptyTitle": "暂无会话",
+    "emptyDescription": "最近更新的会话会显示在这里。",
+    "loadFailed": "最近会话加载失败",
+    "loadMore": "加载更早的会话",
+    "loadingMore": "正在加载…"
+  },
+  "codex": {
+    "running": "运行中",
+    "archived": "归档",
+    "recent": "最近",
+    "navigation": "工作区导航",
+    "newChat": "新聊天",
+    "pinned": "置顶"
+  },
   "projects": {
     "title": "项目",
     "newProject": "新建项目",
