@@ -70,6 +70,21 @@ export class ChatSessionWriter {
    * anyway, but the runtime-visible value must stay provider-native.
    */
   private providerSessionId: string | null;
+  /**
+   * The last error this run reported to its audience, or null when it has not
+   * reported one. A detached run (scheduled or queued turn) has no socket to
+   * observe, so the run gateway reads this after the provider promise settles
+   * to tell "the turn failed" apart from "the turn completed". Runtimes such
+   * as Claude's report a failure as an `error` event instead of rejecting, so
+   * the promise's outcome alone cannot answer that question.
+   */
+  private lastError: string | null = null;
+  /**
+   * Whether this run ended with an aborted terminal `complete`. A detached
+   * caller cannot see the event, and an aborted run must not be recorded as a
+   * delivered queued message even though the provider promise resolves.
+   */
+  private terminalAborted = false;
 
   constructor(options: ChatSessionWriterOptions) {
     this.options = options;
@@ -95,6 +110,12 @@ export class ChatSessionWriter {
 
     const message = record as NormalizedMessage;
 
+    if (message.kind === 'error') {
+      this.lastError = typeof message.content === 'string' && message.content.trim()
+        ? message.content
+        : 'The provider run failed.';
+    }
+
     if (message.kind === 'session_created') {
       const announcedId =
         typeof message.newSessionId === 'string' && message.newSessionId
@@ -115,10 +136,30 @@ export class ChatSessionWriter {
   }
 
   /**
+   * Last error this run reported, or null when it ended without one.
+   *
+   * Used by `dispatchRun` to give a detached caller (a scheduled or queued
+   * turn) the outcome it otherwise cannot see: those runs have no socket and
+   * their provider may resolve normally after reporting the failure as an
+   * event, which would otherwise look like a successful send.
+   */
+  getLastError(): string | null {
+    return this.lastError;
+  }
+
+  /** Whether this run was terminated by an abort rather than finishing on its own. */
+  wasAborted(): boolean {
+    return this.terminalAborted;
+  }
+
+  /**
    * Emits the synthetic terminal `complete` for runs that ended without one
    * (runtime crash before completing, or user abort).
    */
   sendComplete(opts: { exitCode: number; aborted?: boolean }): void {
+    if (opts.aborted) {
+      this.terminalAborted = true;
+    }
     const message = createCompleteMessage({
       provider: this.options.provider,
       sessionId: this.providerSessionId,

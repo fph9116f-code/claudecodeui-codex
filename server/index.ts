@@ -46,6 +46,11 @@ import {
     initializeScheduledMessageDispatcher,
     scheduledMessagesRoutes,
 } from './modules/scheduled-messages/index.js';
+import {
+    chatQueueRoutes,
+    closeChatQueueDispatcher,
+    initializeChatQueueDispatcher,
+} from './modules/chat-queue/index.js';
 import browserUseRoutes from './modules/browser-use/browser-use.routes.js';
 import { assetsRoutes } from './modules/assets/index.js';
 import { fileTreeRoutes } from './modules/file-tree/index.js';
@@ -192,6 +197,8 @@ app.use('/api/browser-use', attachLocalUser, browserUseRoutes);
 // Unified provider MCP routes
 app.use('/api/providers', attachLocalUser, providerRoutes);
 app.use('/api/scheduled-messages', attachLocalUser, scheduledMessagesRoutes);
+// Messages submitted while their session is busy, owned and dispatched by the server.
+app.use('/api/chat-queue', attachLocalUser, chatQueueRoutes);
 
 // Agent API Routes (uses API key authentication)
 app.use('/api/agent', agentRoutes);
@@ -367,6 +374,9 @@ async function startServer() {
             // Sends anything that came due while the server was not running,
             // then keeps polling.
             initializeScheduledMessageDispatcher(providerRuntimeService);
+            // Drains per-session queues when a turn finishes, when a message is
+            // queued, and on a slow recovery poll.
+            initializeChatQueueDispatcher(providerRuntimeService);
 
             // Start server-side plugin processes for enabled plugins
             startEnabledPluginServers().catch(err => {
@@ -376,6 +386,7 @@ async function startServer() {
 
         await closeSessionsWatcher();
         closeScheduledMessageDispatcher();
+        closeChatQueueDispatcher();
         // Clean up plugin processes on shutdown
         const shutdownRuntimeServices = async () => {
             try {

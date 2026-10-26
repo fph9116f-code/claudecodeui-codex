@@ -215,22 +215,75 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 `;
 
 /**
- * Unsent composer text and queued messages, per user and per chat scope.
+ * Unsent composer text, per user and per chat scope.
  *
  * `draft_scope` is a session id, or `project:<projectId>` for a chat that has
  * not been sent yet and therefore has no session. Storing this server-side is
  * what lets a message typed on a laptop be finished on a phone.
+ *
+ * A draft holds text only. Messages waiting for a busy session live in
+ * `chat_queue_messages`: sharing one row meant saving the composer could
+ * create, resurrect or clear a queued message.
  */
 export const SESSION_DRAFTS_TABLE_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS session_drafts (
     user_id INTEGER NOT NULL,
     draft_scope TEXT NOT NULL,
     draft_text TEXT NOT NULL DEFAULT '',
+    -- Legacy column: queued messages used to live here. Kept so an upgraded
+    -- install can migrate them out; new code never writes to it.
     queued_message TEXT,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, draft_scope),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+`;
+
+/**
+ * Messages submitted while their session is busy, waiting for the session's
+ * next turn.
+ *
+ * Deliberately a separate entity from `session_drafts`: a queued message has
+ * its own identity, order, version and execution state, and saving composer
+ * text can never create, restore or clear one.
+ */
+export const CHAT_QUEUE_MESSAGES_TABLE_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS chat_queue_messages (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    session_id TEXT NOT NULL,
+    -- Monotonic within one user's session; dispatch is FIFO by this value.
+    position INTEGER NOT NULL,
+    content TEXT NOT NULL DEFAULT '',
+    options TEXT NOT NULL DEFAULT '{}',
+    attachments TEXT NOT NULL DEFAULT '[]',
+    -- pending | running | failed | unknown | skipped
+    -- failed/unknown pause the session queue until the user retries or skips.
+    status TEXT NOT NULL DEFAULT 'pending',
+    -- Bumped on every edit; an update must present the version it read.
+    version INTEGER NOT NULL DEFAULT 1,
+    -- Dispatch attempts. Only a message the runtime never accepted is retried.
+    attempts INTEGER NOT NULL DEFAULT 0,
+    failure_reason TEXT,
+    -- Client-generated idempotency key: a retried submit is one message.
+    request_id TEXT,
+    -- UTC; a pending row is not claimed before this instant (retry backoff).
+    next_attempt_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    claimed_at DATETIME,
+    -- The dispatch that last claimed this message, for diagnosing lost outcomes.
+    run_id TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
+);
+`;
+
+export const CHAT_QUEUE_INDEXES_SQL = `
+CREATE INDEX IF NOT EXISTS idx_chat_queue_session_order
+ON chat_queue_messages(session_id, status, position);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_queue_request
+ON chat_queue_messages(user_id, request_id) WHERE request_id IS NOT NULL;
 `;
 
 /**
@@ -308,6 +361,9 @@ ON provider_models(provider, sort_order, id);
 ${USER_PREFERENCES_TABLE_SCHEMA_SQL}
 
 ${SESSION_DRAFTS_TABLE_SCHEMA_SQL}
+
+${CHAT_QUEUE_MESSAGES_TABLE_SCHEMA_SQL}
+${CHAT_QUEUE_INDEXES_SQL}
 
 ${SUPERSEDED_PROVIDER_SESSIONS_TABLE_SCHEMA_SQL}
 `;

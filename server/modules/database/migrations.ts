@@ -1,7 +1,11 @@
+import { randomUUID } from 'node:crypto';
+
 import { Database } from 'better-sqlite3';
 
 import {
   APP_CONFIG_TABLE_SCHEMA_SQL,
+  CHAT_QUEUE_INDEXES_SQL,
+  CHAT_QUEUE_MESSAGES_TABLE_SCHEMA_SQL,
   LAST_SCANNED_AT_SQL,
   NOTIFICATION_CHANNEL_ENDPOINTS_TABLE_SCHEMA_SQL,
   PROJECTS_TABLE_SCHEMA_SQL,
@@ -470,6 +474,121 @@ const addProviderModelEffortColumns = (db: Database): void => {
   addColumnToTableIfNotExists(db, 'provider_models', columnNames, 'effort_default', 'TEXT DEFAULT NULL');
 };
 
+/**
+ * Moves queued messages out of `session_drafts` into their own table.
+ *
+ * The old shape stored the queued message inside the draft row, so any write
+ * to the composer could recreate or erase it. The migration runs once: after
+ * it, the legacy column stays NULL and only `chat_queue_messages` is read.
+ * Rows whose session no longer exists are dropped with their draft row's
+ * queue value rather than migrated into a row the FK would reject.
+ */
+const migrateLegacyQueuedDraftsIntoChatQueue = (db: Database): void => {
+  db.exec(CHAT_QUEUE_MESSAGES_TABLE_SCHEMA_SQL);
+  db.exec(CHAT_QUEUE_INDEXES_SQL);
+
+  const hasDrafts = tableExists(db, 'session_drafts');
+  const hasSessions = tableExists(db, 'sessions');
+  if (!hasDrafts || !hasSessions) {
+    return;
+  }
+  // A draft table that predates the queued-message column has nothing to move.
+  if (!getTableInfo(db, 'session_drafts').some((column) => column.name === 'queued_message')) {
+    return;
+  }
+
+  const legacyRows = db
+    .prepare(
+      `SELECT drafts.user_id, drafts.draft_scope AS session_id, drafts.queued_message AS queued_message
+       FROM session_drafts AS drafts
+       INNER JOIN sessions ON sessions.session_id = drafts.draft_scope
+       WHERE drafts.queued_message IS NOT NULL`
+    )
+    .all() as Array<{ user_id: number; session_id: string; queued_message: string }>;
+
+  if (legacyRows.length > 0) {
+    const nextPosition = db.prepare(
+      `SELECT COALESCE(MAX(position), 0) + 1 AS position
+       FROM chat_queue_messages
+       WHERE user_id = ? AND session_id = ?`
+    );
+    const insert = db.prepare(
+      `INSERT INTO chat_queue_messages
+         (id, user_id, session_id, position, content, options, attachments, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`
+    );
+    const clearLegacy = db.prepare(
+      `UPDATE session_drafts SET queued_message = NULL WHERE user_id = ? AND draft_scope = ?`
+    );
+
+    const migrate = db.transaction(() => {
+      for (const row of legacyRows) {
+        const parsed = parseLegacyQueuedMessage(row.queued_message);
+        if (!parsed) {
+          clearLegacy.run(row.user_id, row.session_id);
+          continue;
+        }
+
+        const { position } = nextPosition.get(row.user_id, row.session_id) as { position: number };
+        insert.run(
+          randomUUID(),
+          row.user_id,
+          row.session_id,
+          position,
+          parsed.content,
+          JSON.stringify(parsed.options),
+          JSON.stringify(parsed.attachments)
+        );
+        clearLegacy.run(row.user_id, row.session_id);
+      }
+    });
+
+    migrate();
+    console.log(`Running migration: moved ${legacyRows.length} queued message(s) out of session_drafts`);
+  }
+
+  // A legacy value whose session no longer exists cannot be delivered; drop it
+  // so a later restart cannot migrate it into a queue that would never run.
+  db.exec('UPDATE session_drafts SET queued_message = NULL WHERE queued_message IS NOT NULL');
+};
+
+/**
+ * Reads one legacy `queued_message` value: text plus optional send options and
+ * attachment descriptors. Anything that has nothing to send is dropped.
+ */
+function parseLegacyQueuedMessage(raw: string): {
+  content: string;
+  options: Record<string, unknown>;
+  attachments: unknown[];
+} | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const content = typeof record.content === 'string' ? record.content : '';
+  const attachments = Array.isArray(record.attachments)
+    ? record.attachments
+    : Array.isArray(record.images)
+      ? record.images
+      : [];
+  if (!content.trim() && attachments.length === 0) {
+    return null;
+  }
+
+  const options = record.options && typeof record.options === 'object' && !Array.isArray(record.options)
+    ? record.options as Record<string, unknown>
+    : {};
+
+  return { content, options, attachments };
+}
+
 const ensureProjectsForSessionPaths = (db: Database): void => {
   if (!tableExists(db, 'sessions')) {
     return;
@@ -520,6 +639,9 @@ export const runMigrations = (db: Database) => {
     addProviderModelEffortColumns(db);
     db.exec(USER_PREFERENCES_TABLE_SCHEMA_SQL);
     db.exec(SESSION_DRAFTS_TABLE_SCHEMA_SQL);
+    // Must run after `sessions` exists: the new queue references it, and the
+    // legacy rows are only migrated when their session is still there.
+    migrateLegacyQueuedDraftsIntoChatQueue(db);
     db.exec(SUPERSEDED_PROVIDER_SESSIONS_TABLE_SCHEMA_SQL);
     addSupersededTranscriptPathColumn(db);
 

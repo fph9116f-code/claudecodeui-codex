@@ -2,6 +2,13 @@ export { initializeDatabase } from '@/modules/database/init-db.js';
 export { closeConnection, getConnection, getDatabasePath } from '@/modules/database/connection.js';
 export { apiKeysDb } from '@/modules/database/repositories/api-keys.js';
 export { appConfigDb } from '@/modules/database/repositories/app-config.js';
+// chatQueueDb: used by the Chat Queue module to persist messages waiting for a busy session.
+export { chatQueueDb } from '@/modules/database/repositories/chat-queue.db.js';
+export type {
+  ChatQueueMessageRecord,
+  ChatQueueMessageStatus,
+  ChatQueueMutationResult,
+} from '@/modules/database/repositories/chat-queue.db.js';
 export { credentialsDb } from '@/modules/database/repositories/credentials.js';
 export { githubTokensDb } from '@/modules/database/repositories/github-tokens.js';
 export { notificationChannelEndpointsDb } from '@/modules/database/repositories/notification-channel-endpoints.js';
@@ -12,12 +19,9 @@ export { providerModelsDb } from '@/modules/database/repositories/provider-model
 export { projectsDb } from '@/modules/database/repositories/projects.db.js';
 export { pushSubscriptionsDb } from '@/modules/database/repositories/push-subscriptions.js';
 export { scanStateDb } from '@/modules/database/repositories/scan-state.db.js';
-// sessionDraftsDb: used by User for drafts and Scheduled Messages for server-owned queued turns.
+// sessionDraftsDb: used by User to persist unsent composer text.
 export { sessionDraftsDb } from '@/modules/database/repositories/session-drafts.db.js';
-export type {
-  QueuedSessionMessageRecord,
-  SessionDraftRecord,
-} from '@/modules/database/repositories/session-drafts.db.js';
+export type { SessionDraftRecord } from '@/modules/database/repositories/session-drafts.db.js';
 export { sessionsDb } from '@/modules/database/repositories/sessions.db.js';
 export { userDb } from '@/modules/database/repositories/users.js';
 // userPreferencesDb: used by the User module to persist the settings that used to live in browser localStorage.

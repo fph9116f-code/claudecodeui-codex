@@ -69,6 +69,14 @@ const runs = new Map<string, ChatRun>();
 let retainCompletedRun: (appSessionId: string) => boolean = () => false;
 
 /**
+ * Notified when a run reaches its terminal `complete`, so the chat queue can
+ * send that session's next message without waiting for the recovery poll.
+ * Installed by the composition root; a missing handler just means the poll
+ * finds the message later.
+ */
+let runSettledHandler: ((appSessionId: string) => void) | null = null;
+
+/**
  * Schedules one run's eviction. The timer is bound to the run it was armed
  * for: a later run can take the session's slot while this one's retention —
  * re-armed for as long as the guard holds — is still pending, and firing on
@@ -124,6 +132,18 @@ function decorateAndRecordEvent(run: ChatRun, message: NormalizedMessage): Norma
     run.status = 'completed';
     run.completedAt = Date.now();
     evictRunLater(run);
+
+    // The session is free (once any background work it kept alive is done).
+    // A handler failure must never break the event stream itself.
+    try {
+      runSettledHandler?.(run.appSessionId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[ChatRunRegistry] Run settled handler failed', {
+        appSessionId: run.appSessionId,
+        error: message,
+      });
+    }
   }
 
   run.events.push(outbound);
@@ -182,6 +202,16 @@ export const chatRunRegistry = {
   /** Installs the check that keeps a completed run registered while its session still has background work. */
   setRetentionGuard(guard: (appSessionId: string) => boolean): void {
     retainCompletedRun = guard;
+  },
+
+  /**
+   * Installs (or clears) the callback fired when a run completes.
+   *
+   * The chat queue uses it to start the session's next queued turn as soon as
+   * the current one reports `complete`, instead of waiting for its poll.
+   */
+  setRunSettledHandler(handler: ((appSessionId: string) => void) | null): void {
+    runSettledHandler = handler;
   },
 
   /**
