@@ -1,9 +1,10 @@
 import { memo, useEffect, useRef } from 'react';
-import { Check, ChevronDown, ChevronRight, Edit3, Star, Trash2, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Edit3, Folder, FolderOpen, Star, Trash2, X } from 'lucide-react';
 import type { TFunction } from 'i18next';
 
 import { Button } from '@/shared/ui';
 import { cn } from '@/shared/utils';
+import { useOptionalAppearanceTheme } from '@/shared/context/ThemeContext';
 import type { LLMProvider, MCPServerStatus, Project, ProjectSession, SessionWithProvider, SidebarSessionSelection } from '@/shared/types';
 import { getTaskIndicatorStatus } from '@/modules/sidebar/utils/sidebarProjectFormatting';
 import TaskIndicator from '@/modules/sidebar/TaskIndicator';
@@ -140,6 +141,7 @@ function SidebarProjectItem({
   }, [isEditing]);
 
   const isCompact = useCompactSidebar();
+  const isCodex = useOptionalAppearanceTheme() === 'codex';
 
   const toggleProject = () => onToggleProject(project.projectId);
   const toggleStarProject = () => onToggleStarProject(project.projectId);
@@ -158,7 +160,7 @@ function SidebarProjectItem({
 
   return (
     <div data-theme-surface="project-item" data-selected={isSelected || undefined} className={cn('md:space-y-1', isDeleting && 'opacity-50 pointer-events-none')}>
-      <div className="sticky top-0 z-10 md:group group">
+      <div className="md:group group sticky top-0 z-10">
         {isCompact && (
         <div className="bg-background">
           <div
@@ -319,28 +321,37 @@ function SidebarProjectItem({
           onClick={selectAndToggleProject}
         >
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div
-              className={cn(
-                'w-6 h-6 flex items-center justify-center rounded cursor-pointer transition-all duration-200',
-                isStarred
-                  ? 'hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
-                  : 'opacity-40 hover:opacity-100 hover:bg-accent',
-              )}
-              onClick={(event) => {
-                event.stopPropagation();
-                toggleStarProject();
-              }}
-              title={isStarred ? t('tooltips.removeFromFavorites') : t('tooltips.addToFavorites')}
-            >
-              <Star
+            {isCodex ? (
+              // 文件夹图标点明“项目是容器”，与会话行拉开层级。
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground/70">
+                {isExpanded
+                  ? <FolderOpen className="h-4 w-4" strokeWidth={1.7} aria-hidden />
+                  : <Folder className="h-4 w-4" strokeWidth={1.7} aria-hidden />}
+              </div>
+            ) : (
+              <div
                 className={cn(
-                  'w-3 h-3 transition-colors',
+                  'w-6 h-6 flex items-center justify-center rounded cursor-pointer transition-all duration-200',
                   isStarred
-                    ? 'text-yellow-600 dark:text-yellow-400 fill-current'
-                    : 'text-muted-foreground',
+                    ? 'hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
+                    : 'opacity-40 hover:opacity-100 hover:bg-accent',
                 )}
-              />
-            </div>
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleStarProject();
+                }}
+                title={isStarred ? t('tooltips.removeFromFavorites') : t('tooltips.addToFavorites')}
+              >
+                <Star
+                  className={cn(
+                    'w-3 h-3 transition-colors',
+                    isStarred
+                      ? 'text-yellow-600 dark:text-yellow-400 fill-current'
+                      : 'text-muted-foreground',
+                  )}
+                />
+              </div>
+            )}
             <div className="min-w-0 flex-1 text-left">
               {isEditing ? (
                 <div className="space-y-1">
@@ -363,6 +374,27 @@ function SidebarProjectItem({
                     }}
                   />
                   <div className="truncate text-xs text-muted-foreground" title={project.fullPath}>
+                    {project.fullPath}
+                  </div>
+                </div>
+              ) : isCodex ? (
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <div
+                      className="min-w-0 truncate text-[13px] font-medium leading-4 text-foreground"
+                      title={project.displayName}
+                    >
+                      {project.displayName}
+                    </div>
+                    <span className="flex-shrink-0 rounded bg-muted/70 px-1.5 text-[10px] tabular-nums leading-4 text-muted-foreground">
+                      {sessionCountDisplay}
+                    </span>
+                  </div>
+                  <div
+                    data-theme-surface="project-metadata"
+                    className="truncate"
+                    title={project.fullPath}
+                  >
                     {project.fullPath}
                   </div>
                 </div>
@@ -409,6 +441,24 @@ function SidebarProjectItem({
               </>
             ) : (
               <>
+                {isCodex && (
+                  // Codex 行把星标从行首移到行尾，行首留给文件夹图标。
+                  <div
+                    className={cn(
+                      'touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded transition-all duration-200 hover:bg-accent',
+                      isStarred
+                        ? 'text-yellow-600 dark:text-yellow-400'
+                        : 'text-muted-foreground opacity-0 group-hover:opacity-100',
+                    )}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleStarProject();
+                    }}
+                    title={isStarred ? t('tooltips.removeFromFavorites') : t('tooltips.addToFavorites')}
+                  >
+                    <Star className={cn('h-3 w-3', isStarred && 'fill-current')} />
+                  </div>
+                )}
                 <div
                   className="touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-200 hover:bg-accent group-hover:opacity-100"
                   onClick={(event) => {

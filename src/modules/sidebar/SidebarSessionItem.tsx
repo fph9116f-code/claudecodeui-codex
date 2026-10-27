@@ -400,6 +400,7 @@ function SidebarSessionItem({
       <div>
         <a
           href={`/session/${session.id}`}
+          data-selected={isSelected || undefined}
           role={isSelecting ? 'checkbox' : undefined}
           aria-checked={isSelecting ? isChecked : undefined}
           aria-disabled={isSelecting && !isSelectable ? true : undefined}
