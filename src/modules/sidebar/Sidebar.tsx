@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useOptionalAppearanceTheme } from '@/shared/context/ThemeContext';
@@ -15,6 +15,7 @@ import SidebarCollapsed from '@/modules/sidebar/SidebarCollapsed';
 import SidebarContent from '@/modules/sidebar/SidebarContent';
 import SidebarModals from '@/modules/sidebar/SidebarModals';
 import SidebarArchiveToast from '@/modules/sidebar/SidebarArchiveToast';
+import NewChatProjectPicker from '@/modules/sidebar/NewChatProjectPicker';
 
 type SidebarProps = {
   projects: Project[];
@@ -82,6 +83,8 @@ function Sidebar({
   // would re-render the whole tree on every provider status frame.
   const activeSessions = useBusySessionIdSet();
   const backgroundSessionIds = useBackgroundSessionIdSet();
+  // Codex 外观下点击“新聊天”先弹出项目选择器；选择完成后再交给既有的新建会话流程。
+  const [isNewChatPickerOpen, setIsNewChatPickerOpen] = useState(false);
 
   const {
     isSidebarCollapsed,
@@ -269,6 +272,22 @@ function Sidebar({
         t={t}
       />
 
+      <NewChatProjectPicker
+        open={isNewChatPickerOpen}
+        onOpenChange={setIsNewChatPickerOpen}
+        projects={projects}
+        selectedProject={selectedProject}
+        isProjectStarred={isProjectStarred}
+        onSelectProject={(project) => {
+          setIsNewChatPickerOpen(false);
+          onNewSession(project);
+        }}
+        onCreateProject={() => {
+          setIsNewChatPickerOpen(false);
+          setShowNewProject(true);
+        }}
+        t={t}
+      />
       <div className="flex h-full min-w-0">
       {isCodex && !isMobile && (
         <SidebarNavigationRail
@@ -367,10 +386,7 @@ function Sidebar({
               void refreshProjects();
             }}
             isRefreshing={isRefreshing}
-            onNewChat={() => {
-              if (selectedProject) onNewSession(selectedProject);
-              else setShowNewProject(true);
-            }}
+            onNewChat={() => setIsNewChatPickerOpen(true)}
             onCreateProject={() => setShowNewProject(true)}
             onCollapseSidebar={handleCollapseSidebar}
             updateAvailable={updateAvailable}

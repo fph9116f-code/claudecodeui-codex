@@ -13,7 +13,14 @@
     "recent": "最近",
     "navigation": "工作區導覽",
     "newChat": "新聊天",
-    "pinned": "置頂"
+    "pinned": "置頂",
+    "chooseProject": "選擇專案開始新聊天",
+    "searchProjects": "搜尋專案...",
+    "noProjects": "找不到專案",
+    "newProjectAction": "新增專案",
+    "currentProject": "目前",
+    "sessionCount_one": "{{count}} 個會話",
+    "sessionCount_other": "{{count}} 個會話"
   },
   "projects": {
     "title": "專案",

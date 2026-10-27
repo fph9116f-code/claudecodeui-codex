@@ -5,7 +5,14 @@
     "recent": "Recent",
     "navigation": "Workspace navigation",
     "newChat": "New chat",
-    "pinned": "Pinned"
+    "pinned": "Pinned",
+    "chooseProject": "Choose a project",
+    "searchProjects": "Search projects...",
+    "noProjects": "No projects found",
+    "newProjectAction": "New project",
+    "currentProject": "Current",
+    "sessionCount_one": "{{count}} session",
+    "sessionCount_other": "{{count}} sessions"
   },
   "projects": {
     "title": "Projects",

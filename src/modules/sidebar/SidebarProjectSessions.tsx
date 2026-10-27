@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 
 import { Button } from '@/shared/ui';
 import { cn } from '@/shared/utils';
+import { useOptionalAppearanceTheme } from '@/shared/context/ThemeContext';
 import type { LLMProvider, Project, ProjectSession, SessionWithProvider, SidebarSessionSelection } from '@/shared/types';
 import SidebarSessionItem from '@/modules/sidebar/SidebarSessionItem';
 import { useCompactSidebar } from '@/modules/sidebar/hooks/useCompactSidebar';
@@ -94,6 +95,8 @@ export default function SidebarProjectSessions({
   t,
 }: SidebarProjectSessionsProps) {
   const isCompact = useCompactSidebar();
+  // Codex 外观把新建会话统一收到顶部“新聊天”，项目内不再重复提供入口。
+  const isCodex = useOptionalAppearanceTheme() === 'codex';
 
   if (!isExpanded) {
     return null;
@@ -126,7 +129,7 @@ export default function SidebarProjectSessions({
 
   return (
     <div data-theme-surface="project-sessions" className="ml-3 space-y-1 border-l border-border pl-3">
-      {isCompact ? (
+      {!isCodex && (isCompact ? (
         <div className="px-3 pb-1 pt-1">
           <button
             className="flex h-8 w-full items-center justify-center gap-2 rounded-md bg-primary text-xs font-medium text-primary-foreground transition-all duration-150 hover:bg-primary/90 active:scale-[0.98]"
@@ -149,7 +152,7 @@ export default function SidebarProjectSessions({
           <Plus className="h-3 w-3" />
           {t('sessions.newSession')}
         </Button>
-      )}
+      ))}
 
       {(isSelecting || (initialSessionsLoaded && selectableSessionIds.length > 0)) && (
         <div className={cn('space-y-1', isCompact && 'px-3')}>
